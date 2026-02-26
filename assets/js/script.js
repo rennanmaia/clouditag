@@ -65,13 +65,35 @@ window.onclick = function(event) {
     }
 }
 
-// Toggle sidebar em dispositivos móveis
+// Toggle sidebar (mobile e desktop)
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
+    if (!sidebar) return;
+
+    const isMobile = window.innerWidth <= 900;
+
+    if (isMobile) {
         sidebar.classList.toggle('active');
+    } else {
+        document.body.classList.toggle('sidebar-collapsed');
     }
 }
+
+// Criar botão hamburger global quando existir sidebar
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+
+    if (!document.querySelector('.sidebar-toggle-btn')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sidebar-toggle-btn';
+        btn.setAttribute('aria-label', 'Alternar menu');
+        btn.innerHTML = '<i class="fas fa-bars"></i>';
+        btn.addEventListener('click', toggleSidebar);
+        document.body.appendChild(btn);
+    }
+});
 
 // Confirmar exclusão
 function confirmDelete(message = 'Tem certeza que deseja excluir este item?') {

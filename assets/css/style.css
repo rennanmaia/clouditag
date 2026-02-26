@@ -458,6 +458,28 @@ textarea.form-control { padding: 11px 14px; resize: vertical; min-height: 100px;
 }
 .theme-toggle-float:hover { box-shadow: var(--shadow-lg); transform: none; }
 
+/* ---------- Sidebar Toggle Button ------------------------------------------- */
+.sidebar-toggle-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1100;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-pill);
+    padding: 6px 10px;
+    font-size: 18px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+}
+.sidebar-toggle-btn:hover {
+    box-shadow: var(--shadow-lg);
+}
+
 /* ---------- Sidebar ------------------------------------------------------------- */
 .sidebar {
     width: 256px;
@@ -659,6 +681,65 @@ textarea.form-control { padding: 11px 14px; resize: vertical; min-height: 100px;
 }
 .table-striped tbody tr:nth-of-type(odd) { background: var(--surface-2); }
 .table-hover tbody tr:hover { background: var(--brand-blue-lt); }
+
+.table-responsive {
+    width: 100%;
+}
+
+/* Admin profiles: table vs cards -------------------------------------------- */
+.admin-profiles-cards {
+    display: none;
+}
+
+.admin-profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+}
+.admin-profile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.admin-profile-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+}
+.admin-profile-slug {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.admin-profile-card-body {
+    margin-bottom: 10px;
+}
+.admin-profile-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.admin-profile-row .label {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.admin-profile-row .value {
+    text-align: right;
+}
+.admin-profile-card-actions {
+    display: flex;
+    gap: 8px;
+}
+.admin-profile-card-actions .btn {
+    flex: 1;
+    justify-content: center;
+}
 
 /* ---------- Modal --------------------------------------------------------------- */
 .modal {
@@ -900,6 +981,10 @@ textarea.form-control { padding: 11px 14px; resize: vertical; min-height: 100px;
     .login-card { padding: 30px 22px; }
     .modal-dialog { margin: 12px; width: calc(100% - 24px); }
     .page-header { flex-direction: column; align-items: flex-start; }
+
+    /* Admin profiles: usar cards em mobile */
+    .admin-profiles-table { display: none; }
+    .admin-profiles-cards { display: block; }
 }
 
 @media (max-width: 480px) {
@@ -908,6 +993,14 @@ textarea.form-control { padding: 11px 14px; resize: vertical; min-height: 100px;
     .btn-lg { padding: 12px 22px; font-size: 15px; }
     .login-card { padding: 26px 18px; }
     .theme-toggle-float { top: 10px; right: 10px; padding: 6px 12px; font-size: 12px; }
+}
+
+/* Estado colapsado da sidebar (desktop) */
+body.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+}
+body.sidebar-collapsed .main-content {
+    margin-left: 0;
 }
 
 /* ---------- Animations --------------------------------------------------------- */

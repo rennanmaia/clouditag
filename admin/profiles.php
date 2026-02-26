@@ -91,7 +91,8 @@ $profiles = $stmt->fetchAll();
                                     Nenhum perfil encontrado.
                                 </p>
                             <?php else: ?>
-                                <div class="table-responsive">
+                                <!-- Visão em tabela (desktop) -->
+                                <div class="admin-profiles-table">
                                     <table class="table">
                                         <thead>
                                             <tr>
@@ -133,6 +134,41 @@ $profiles = $stmt->fetchAll();
                                             <?php endforeach; ?>
                                         </tbody>
                                     </table>
+                                </div>
+
+                                <!-- Visão em cards (mobile) -->
+                                <div class="admin-profiles-cards">
+                                    <?php foreach ($profiles as $p): ?>
+                                        <div class="admin-profile-card">
+                                            <div class="admin-profile-card-header">
+                                                <div>
+                                                    <div class="admin-profile-name"><?php echo htmlspecialchars($p['name']); ?></div>
+                                                    <div class="admin-profile-slug"><?php echo htmlspecialchars($p['slug']); ?></div>
+                                                </div>
+                                                <div>
+                                                    <?php if ($p['is_active']): ?>
+                                                        <span class="badge badge-success">Ativo</span>
+                                                    <?php else: ?>
+                                                        <span class="badge badge-secondary">Inativo</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                            <div class="admin-profile-card-body">
+                                                <div class="admin-profile-row"><span class="label">ID</span><span class="value">#<?php echo (int)$p['id']; ?></span></div>
+                                                <div class="admin-profile-row"><span class="label">Dono</span><span class="value"><?php echo htmlspecialchars($p['owner_name']); ?></span></div>
+                                                <div class="admin-profile-row"><span class="label">E-mail</span><span class="value"><?php echo htmlspecialchars($p['owner_email']); ?></span></div>
+                                                <div class="admin-profile-row"><span class="label">Criado em</span><span class="value"><?php echo $p['created_at'] ? date('d/m/Y H:i', strtotime($p['created_at'])) : '-'; ?></span></div>
+                                            </div>
+                                            <div class="admin-profile-card-actions">
+                                                <a href="../profile/<?php echo urlencode($p['slug']); ?>" target="_blank" class="btn btn-sm btn-light" title="Ver público">
+                                                    <i class="fas fa-external-link-alt"></i> Ver
+                                                </a>
+                                                <a href="../edit_profile.php?id=<?php echo (int)$p['id']; ?>" class="btn btn-sm btn-primary" title="Editar perfil">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </a>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
                             <?php endif; ?>
                         </div>
