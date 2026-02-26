@@ -324,7 +324,7 @@ if ($_POST && !isset($_POST['action'])) {
                                                        value="<?php echo htmlspecialchars($profile['slug']); ?>" 
                                                        required>
                                             </div>
-                                            <small class="text-muted">Apenas letras, números e hífens</small>
+                                            <small class="text-muted" id="slug-help">Apenas letras, números e hífens</small>
                                         </div>
                                     </div>
                                     <div class="col-6">
@@ -788,6 +788,72 @@ if ($_POST && !isset($_POST['action'])) {
                 }
             }
         });
+
+        // ── Validação em tempo real do slug ─────────────────────────────────
+        (function() {
+            let slugCheckTimeout = null;
+            let slugAvailable = true;
+
+            function setSlugStatus(message, isError) {
+                const help = document.getElementById('slug-help');
+                if (!help) return;
+                help.textContent = message || 'Apenas letras, números e hífens';
+                help.style.color = isError ? 'var(--danger-color)' : 'var(--text-muted)';
+                const submitBtn = document.querySelector('#profileForm button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = !!isError;
+                }
+            }
+
+            function checkSlugAvailability(slug) {
+                if (!slug) {
+                    setSlugStatus('Informe um slug.', true);
+                    slugAvailable = false;
+                    return;
+                }
+                const fd = new FormData();
+                fd.append('slug', slug);
+                fd.append('profile_id', '<?php echo $profile_id; ?>');
+                fetch('api/check_slug.php', {
+                    method: 'POST',
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        setSlugStatus('Erro ao verificar slug.', true);
+                        slugAvailable = false;
+                        return;
+                    }
+                    slugAvailable = !!data.available;
+                    setSlugStatus(data.message, !slugAvailable);
+                })
+                .catch(() => {
+                    setSlugStatus('Erro ao verificar slug.', true);
+                    slugAvailable = false;
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                const slugInput = document.getElementById('slug');
+                if (slugInput) {
+                    slugInput.addEventListener('input', function() {
+                        const value = this.value.trim();
+                        clearTimeout(slugCheckTimeout);
+                        slugCheckTimeout = setTimeout(() => checkSlugAvailability(value), 300);
+                    });
+                }
+
+                const form = document.getElementById('profileForm');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        if (slugAvailable === false) {
+                            e.preventDefault();
+                        }
+                    });
+                }
+            });
+        })();
     </script>
 </body>
 </html>
