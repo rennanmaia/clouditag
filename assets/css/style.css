@@ -981,8 +981,10 @@ textarea.form-control { padding: 11px 14px; resize: vertical; min-height: 100px;
     .login-card { padding: 30px 22px; }
     .modal-dialog { margin: 12px; width: calc(100% - 24px); }
     .page-header { flex-direction: column; align-items: flex-start; }
+}
 
-    /* Admin profiles: usar cards em mobile */
+/* Admin profiles: usar cards em telas pequenas/médias */
+@media (max-width: 1024px) {
     .admin-profiles-table { display: none; }
     .admin-profiles-cards { display: block; }
 }
