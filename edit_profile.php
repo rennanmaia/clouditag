@@ -193,15 +193,15 @@ if ($_POST && !isset($_POST['action'])) {
             }
             
             if (!$error_message) {
-                // Atualizar perfil básico
+                // Atualizar perfil básico, incluindo layout_template
                 $stmt = $db->prepare("
                     UPDATE profiles SET 
-                        profile_type = ?, name = ?, slug = ?, description = ?, logo = ?
+                        profile_type = ?, name = ?, slug = ?, description = ?, logo = ?, layout_template = ?
                     WHERE id = ?
                 ");
                 
                 if ($stmt->execute([
-                    $profile_type, $name, $slug, $description, $logo_filename, $profile_id
+                    $profile_type, $name, $slug, $description, $logo_filename, $layout_template, $profile_id
                 ])) {
                     $success_message = 'Perfil atualizado com sucesso!';
                     
@@ -211,6 +211,7 @@ if ($_POST && !isset($_POST['action'])) {
                     $profile['slug'] = $slug;
                     $profile['description'] = $description;
                     $profile['logo'] = $logo_filename;
+                    $profile['layout_template'] = $layout_template;
                     
                     // Recarregar campos dinâmicos
                     $profile_fields = getAllProfileFields($profile_id);

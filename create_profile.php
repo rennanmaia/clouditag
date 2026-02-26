@@ -52,13 +52,13 @@ if ($_POST) {
             }
             
             if (!$error_message) {
-                // Inserir perfil básico
+                // Inserir perfil básico já com layout_template
                 $stmt = $db->prepare("
-                    INSERT INTO profiles (user_id, profile_type, name, slug, description, logo, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO profiles (user_id, profile_type, layout_template, name, slug, description, logo, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 
-                if ($stmt->execute([$user['id'], $profile_type, $name, $slug, $description, $logo_filename, date('Y-m-d H:i:s')])) {
+                if ($stmt->execute([$user['id'], $profile_type, $layout_template, $name, $slug, $description, $logo_filename, date('Y-m-d H:i:s')])) {
                     $profile_id = $db->lastInsertId();
                     
                     // Processar campos dinâmicos
@@ -98,10 +98,6 @@ $field_types = getFieldTypes();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-                // Inserir perfil básico já com layout_template
-                $stmt = $db->prepare("\n                    INSERT INTO profiles (user_id, profile_type, layout_template, name, slug, description, logo, created_at) \n                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n                ");
-                
-                if ($stmt->execute([$user['id'], $profile_type, $layout_template, $name, $slug, $description, $logo_filename, date('Y-m-d H:i:s')])) {
     <script>(function(){var t=localStorage.getItem('clouditag_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
