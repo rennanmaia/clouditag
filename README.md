@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CloudiTag - Sistema de Gestão de Perfil Empresarial
 
 Sistema completo desenvolvido em PHP + MySQL + HTML + CSS + JavaScript para gestão de perfis empresariais e profissionais com recursos avançados.
@@ -206,3 +207,6 @@ Este sistema foi desenvolvido para uso educacional e comercial.
 
 **CloudiTag** - Sistema de Gestão de Perfil Empresarial
 Desenvolvido com ❤️ em PHP
+=======
+# clouditag
+>>>>>>> f72ee6539a3420712369a4040153b163a99455d0
