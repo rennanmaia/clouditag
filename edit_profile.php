@@ -23,9 +23,10 @@ if (!$profile || (!userOwnsProfile($user['id'], $profile_id) && !isProfileAdmin(
 $error_message = '';
 $success_message = '';
 
-// Buscar campos atuais do perfil (todos, incluindo invisíveis para administração)
+// Buscar campos e links atuais do perfil (todos os campos, links ativos)
 $profile_fields = getAllProfileFields($profile_id);
-$field_types = getFieldTypes();
+$field_types    = getFieldTypes();
+$links          = getProfileLinks($profile_id);
 
 // Processar ações AJAX
 if (isset($_POST['action'])) {
@@ -85,6 +86,62 @@ if (isset($_POST['action'])) {
                 echo json_encode(['success' => true, 'message' => 'Campo removido com sucesso!']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Erro ao remover campo.']);
+            }
+            exit;
+
+        case 'reorder_fields':
+            $ids_json = $_POST['ids'] ?? '[]';
+            $ids = json_decode($ids_json, true);
+
+            if (!is_array($ids)) {
+                echo json_encode(['success' => false, 'message' => 'Lista de campos inválida.']);
+                exit;
+            }
+
+            try {
+                $db->beginTransaction();
+                $stmt = $db->prepare("UPDATE profile_fields SET order_index = ? WHERE id = ? AND profile_id = ?");
+                $order = 1;
+                foreach ($ids as $id) {
+                    $id = (int)$id;
+                    if ($id <= 0) continue;
+                    $stmt->execute([$order++, $id, $profile_id]);
+                }
+                $db->commit();
+                echo json_encode(['success' => true]);
+            } catch (Exception $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                echo json_encode(['success' => false, 'message' => 'Erro ao reordenar campos.']);
+            }
+            exit;
+
+        case 'reorder_links':
+            $ids_json = $_POST['ids'] ?? '[]';
+            $ids = json_decode($ids_json, true);
+
+            if (!is_array($ids)) {
+                echo json_encode(['success' => false, 'message' => 'Lista de links inválida.']);
+                exit;
+            }
+
+            try {
+                $db->beginTransaction();
+                $stmt = $db->prepare("UPDATE profile_links SET order_index = ? WHERE id = ? AND profile_id = ?");
+                $order = 1;
+                foreach ($ids as $id) {
+                    $id = (int)$id;
+                    if ($id <= 0) continue;
+                    $stmt->execute([$order++, $id, $profile_id]);
+                }
+                $db->commit();
+                echo json_encode(['success' => true]);
+            } catch (Exception $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                echo json_encode(['success' => false, 'message' => 'Erro ao reordenar links.']);
             }
             exit;
     }
@@ -164,6 +221,23 @@ if ($_POST && !isset($_POST['action'])) {
     <script>(function(){var t=localStorage.getItem('clouditag_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <style>
+        .field-item .field-drag,
+        .link-item-row .link-drag {
+            cursor: grab;
+            color: var(--gray-400);
+            display: flex;
+            align-items: center;
+        }
+        .field-item .field-drag:hover,
+        .link-item-row .link-drag:hover {
+            color: var(--brand-blue);
+        }
+        .sortable-ghost {
+            opacity: .5;
+            background: var(--gray-100);
+        }
+    </style>
 </head>
 <body>
     <!-- Sidebar -->
@@ -368,6 +442,9 @@ if ($_POST && !isset($_POST['action'])) {
                                             $hint = $hints[$field['field_name']] ?? '';
                                         ?>
                                         <div class="field-item" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--gray-300);border-radius:var(--border-radius);background:var(--card-bg);margin-bottom:8px;" data-field-id="<?php echo $field['id']; ?>" data-input-type="<?php echo htmlspecialchars($field['input_type']); ?>">
+                                            <span class="field-drag" style="width:18px;text-align:center;font-size:1.1em;flex-shrink:0;">
+                                                <i class="fas fa-grip-vertical"></i>
+                                            </span>
                                             <span style="width:34px;text-align:center;font-size:1.2em;color:var(--brand-blue);flex-shrink:0;">
                                                 <i class="<?php echo htmlspecialchars($field['icon']); ?>"></i>
                                             </span>
@@ -413,6 +490,36 @@ if ($_POST && !isset($_POST['action'])) {
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </div>
+
+                            <!-- Ordenação de Links Rápidos -->
+                            <h4 style="margin-top:24px;"><i class="fas fa-link"></i> Links Rápidos</h4>
+                            <div id="links-container">
+                                <?php if (empty($links)): ?>
+                                    <div class="empty-fields text-center p-4" id="no-links-msg" style="color: var(--gray-500);">
+                                        <i class="fas fa-link-slash fa-3x mb-3"></i>
+                                        <p>Nenhum link cadastrado para este perfil.</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($links as $link): ?>
+                                        <div class="link-item-row" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gray-300);border-radius:var(--border-radius);background:var(--card-bg);margin-bottom:8px;" data-link-id="<?php echo $link['id']; ?>">
+                                            <span class="link-drag" style="width:18px;text-align:center;font-size:1.1em;flex-shrink:0;">
+                                                <i class="fas fa-grip-vertical"></i>
+                                            </span>
+                                            <span style="width:34px;text-align:center;font-size:1.1em;color:var(--brand-blue);flex-shrink:0;">
+                                                <i class="<?php echo htmlspecialchars($link['icon'] ?: 'fas fa-link'); ?>"></i>
+                                            </span>
+                                            <div style="flex:1;min-width:0;">
+                                                <div style="font-weight:600;font-size:.9em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                    <?php echo htmlspecialchars($link['title']); ?>
+                                                </div>
+                                                <div style="font-size:.8em;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                    <?php echo htmlspecialchars($link['url']); ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -421,6 +528,7 @@ if ($_POST && !isset($_POST['action'])) {
     </div>
 
     <script src="assets/js/script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script>
         // Preview da logo
         function previewImage(input, previewId) {
@@ -635,6 +743,53 @@ if ($_POST && !isset($_POST['action'])) {
         window.addField = addField;
         window.updateField = updateField;
         window.removeField = removeField;
+
+        // Ordenação via drag-and-drop (campos e links)
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.Sortable) {
+                const fieldsContainer = document.getElementById('fields-container');
+                if (fieldsContainer) {
+                    Sortable.create(fieldsContainer, {
+                        handle: '.field-drag',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        onEnd: function() {
+                            const ids = Array.from(fieldsContainer.querySelectorAll('[data-field-id]'))
+                                .map(el => el.getAttribute('data-field-id'));
+                            if (!ids.length) return;
+                            const fd = new FormData();
+                            fd.append('action', 'reorder_fields');
+                            fd.append('ids', JSON.stringify(ids));
+                            fetch('edit_profile.php?id=<?php echo $profile_id; ?>', {
+                                method: 'POST',
+                                body: fd
+                            }).catch(console.error);
+                        }
+                    });
+                }
+
+                const linksContainer = document.getElementById('links-container');
+                if (linksContainer) {
+                    Sortable.create(linksContainer, {
+                        handle: '.link-drag',
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        onEnd: function() {
+                            const ids = Array.from(linksContainer.querySelectorAll('[data-link-id]'))
+                                .map(el => el.getAttribute('data-link-id'));
+                            if (!ids.length) return;
+                            const fd = new FormData();
+                            fd.append('action', 'reorder_links');
+                            fd.append('ids', JSON.stringify(ids));
+                            fetch('edit_profile.php?id=<?php echo $profile_id; ?>', {
+                                method: 'POST',
+                                body: fd
+                            }).catch(console.error);
+                        }
+                    });
+                }
+            }
+        });
     </script>
 </body>
 </html>
