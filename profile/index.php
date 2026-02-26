@@ -71,6 +71,8 @@ function renderProfileFieldItemPublic(array $field, string $wifi_password_value 
             $val   = htmlspecialchars($value, ENT_QUOTES);
             $href  = "#\" onclick=\"copyToClipboard('{$val}')";
             $display = 'PIX: ' . htmlspecialchars($value);
+            // Ícone estilizado para PIX (QR Code)
+            $icon   = 'fas fa-qrcode';
             break;
         case 'address':
             $tag   = 'a';
