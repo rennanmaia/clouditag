@@ -54,12 +54,12 @@ if ($_POST) {
                     $profile_id = $db->lastInsertId();
                     
                     // Processar campos dinâmicos
-                    $field_types = getFieldTypes();
-                    foreach ($field_types as $field_type) {
-                        $field_value = isset($_POST['field_' . $field_type['name']]) ? sanitize($_POST['field_' . $field_type['name']]) : '';
-                        
-                        if (!empty($field_value)) {
-                            updateProfileField($profile_id, $field_type['id'], $field_value);
+                    $posted_type_ids = isset($_POST['field_type_ids']) && is_array($_POST['field_type_ids']) ? $_POST['field_type_ids'] : [];
+                    $posted_values   = isset($_POST['field_values'])   && is_array($_POST['field_values'])   ? $_POST['field_values']   : [];
+                    foreach ($posted_type_ids as $idx => $ftype_id) {
+                        $fvalue = isset($posted_values[$idx]) ? sanitize($posted_values[$idx]) : '';
+                        if (!empty($fvalue) && is_numeric($ftype_id)) {
+                            updateProfileField($profile_id, (int)$ftype_id, $fvalue);
                         }
                     }
                     
@@ -73,6 +73,7 @@ if ($_POST) {
         }
     }
 }
+$field_types = getFieldTypes();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -184,51 +185,50 @@ if ($_POST) {
                                     <textarea class="form-control" name="description" id="description" rows="3" data-auto-resize><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
                                 </div>
                                 
-                                <h4>Campos Disponíveis</h4>
-                                <hr>
-                                <p class="text-muted">Preencha apenas os campos que deseja incluir no seu perfil. Você poderá adicionar, editar ou remover campos depois.</p>
-                                
-                                <?php
-                                $field_types = getFieldTypes();
-                                $cols_per_row = 0;
-                                echo '<div class="row">';
-                                foreach ($field_types as $field_type):
-                                    if ($cols_per_row == 0) echo '<div class="row">';
-                                ?>
-                                    <div class="col-6">
-                                        <div class="form-group">
-                                            <label for="field_<?php echo $field_type['name']; ?>">
-                                                <?php if ($field_type['icon']): ?>
-                                                    <i class="<?php echo htmlspecialchars($field_type['icon']); ?>"></i>
-                                                <?php endif; ?>
-                                                <?php echo htmlspecialchars($field_type['label']); ?>
-                                            </label>
-                                            <?php if ($field_type['input_type'] === 'textarea'): ?>
-                                                <textarea class="form-control" name="field_<?php echo $field_type['name']; ?>" 
-                                                         id="field_<?php echo $field_type['name']; ?>" rows="2"
-                                                         placeholder="<?php echo htmlspecialchars($field_type['placeholder']); ?>"><?php echo isset($_POST['field_' . $field_type['name']]) ? htmlspecialchars($_POST['field_' . $field_type['name']]) : ''; ?></textarea>
-                                            <?php else: ?>
-                                                <input type="<?php echo $field_type['input_type']; ?>" 
-                                                       class="form-control" 
-                                                       name="field_<?php echo $field_type['name']; ?>" 
-                                                       id="field_<?php echo $field_type['name']; ?>"
-                                                       placeholder="<?php echo htmlspecialchars($field_type['placeholder']); ?>"
-                                                       value="<?php echo isset($_POST['field_' . $field_type['name']]) ? htmlspecialchars($_POST['field_' . $field_type['name']]) : ''; ?>"
-                                                       <?php if ($field_type['validation_pattern']): ?>
-                                                           pattern="<?php echo htmlspecialchars($field_type['validation_pattern']); ?>"
-                                                       <?php endif; ?>>
-                                            <?php endif; ?>
-                                        </div>
+                                <!-- ===== CAMPOS DINÂMICOS ===== -->
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 8px;">
+                                    <div>
+                                        <h4 style="margin:0;"><i class="fas fa-list-ul"></i> Campos do Perfil</h4>
+                                        <small class="text-muted">Adicione os campos que aparecerão no seu cartão digital</small>
                                     </div>
-                                <?php
-                                    $cols_per_row++;
-                                    if ($cols_per_row == 2) {
-                                        echo '</div>';
-                                        $cols_per_row = 0;
-                                    }
-                                endforeach;
-                                if ($cols_per_row > 0) echo '</div>';
-                                ?>
+                                </div>
+
+                                <!-- Linha de adição -->
+                                <div id="add-field-bar" style="display:flex;gap:10px;align-items:flex-end;background:var(--gray-50);border:2px dashed var(--gray-300);border-radius:var(--border-radius);padding:16px;margin-bottom:12px;">
+                                    <div style="flex:0 0 210px;">
+                                        <label style="font-size:.85em;margin-bottom:4px;display:block;">Tipo de Campo</label>
+                                        <select id="new-field-type" class="form-control" onchange="onCreateTypeChange(this)">
+                                            <option value="">Selecione o tipo&hellip;</option>
+                                            <?php foreach ($field_types as $ft): ?>
+                                            <option value="<?php echo $ft['id']; ?>"
+                                                    data-icon="<?php echo htmlspecialchars($ft['icon']); ?>"
+                                                    data-label="<?php echo htmlspecialchars($ft['label']); ?>"
+                                                    data-input-type="<?php echo htmlspecialchars($ft['input_type']); ?>"
+                                                    data-placeholder="<?php echo htmlspecialchars($ft['placeholder'] ?? ''); ?>"
+                                                    data-name="<?php echo htmlspecialchars($ft['name']); ?>">
+                                                <?php echo htmlspecialchars($ft['label']); ?>
+                                            </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label style="font-size:.85em;margin-bottom:4px;display:block;">Valor</label>
+                                        <input type="text" id="new-field-value" class="form-control" placeholder="Selecione um tipo acima" disabled>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-success" onclick="addFieldRowCreate()" style="white-space:nowrap;">
+                                            <i class="fas fa-plus"></i> Adicionar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="create-field-messages"></div>
+
+                                <!-- Lista de campos adicionados -->
+                                <div id="fields-list">
+                                    <div id="fields-empty" class="text-center p-4" style="color:var(--gray-400);border:1px dashed var(--gray-300);border-radius:var(--border-radius);">
+                                        <i class="fas fa-info-circle"></i> Nenhum campo adicionado ainda.
+                                    </div>
+                                </div>
                                 
                                 <!-- Preview da logo -->
                                 <div id="logo-preview-container" style="display: none; text-align: center; margin: 20px 0;">
@@ -253,29 +253,147 @@ if ($_POST) {
 
     <script src="assets/js/script.js"></script>
     <script>
-        // Configurar geração automática de slug
-        document.addEventListener('DOMContentLoaded', function() {
-            setupSlugGeneration('name', 'slug');
-            
-            // Preview da logo
-            function previewImage(input, previewId) {
-                const file = input.files[0];
-                const preview = document.getElementById(previewId);
-                const container = document.getElementById(previewId + '-container');
-                
-                if (file && preview) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        preview.src = e.target.result;
-                        container.style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-            
-            // Tornar função global
-            window.previewImage = previewImage;
-        });
+    // ── Mapa de tipos de campo (injetado pelo PHP) ──────────────────────────────
+    const fieldTypesMeta = <?php
+        $ft_map = [];
+        foreach ($field_types as $ft) {
+            $ft_map[$ft['id']] = [
+                'id'          => $ft['id'],
+                'name'        => $ft['name'],
+                'label'       => $ft['label'],
+                'icon'        => $ft['icon'],
+                'input_type'  => $ft['input_type'],
+                'placeholder' => $ft['placeholder'] ?? '',
+            ];
+        }
+        echo json_encode($ft_map, JSON_UNESCAPED_UNICODE);
+    ?>;
+
+    // ── Atualiza o input de valor conforme o tipo selecionado ──────────────────
+    function onCreateTypeChange(select) {
+        const valueInput = document.getElementById('new-field-value');
+        const opt = select.options[select.selectedIndex];
+        if (!opt.value) {
+            valueInput.value = '';
+            valueInput.type = 'text';
+            valueInput.placeholder = 'Selecione um tipo acima';
+            valueInput.disabled = true;
+            return;
+        }
+        const inputType = opt.getAttribute('data-input-type') || 'text';
+        valueInput.type   = inputType === 'textarea' ? 'text' : inputType;
+        valueInput.placeholder = opt.getAttribute('data-placeholder') || 'Digite o valor';
+        valueInput.disabled = false;
+        valueInput.focus();
+    }
+
+    // ── Adiciona linha de campo ao formulário ──────────────────────────────────
+    let _createFieldIdx = 0;
+    function addFieldRowCreate() {
+        const typeSelect  = document.getElementById('new-field-type');
+        const valueInput  = document.getElementById('new-field-value');
+        const typeId      = typeSelect.value;
+        const value       = valueInput.value.trim();
+
+        if (!typeId) { showCreateMsg('Selecione um tipo de campo.', 'error'); return; }
+        if (!value)  { showCreateMsg('Digite o valor do campo.', 'error');    return; }
+
+        // Bloquear duplicatas
+        if (document.querySelector(`[data-create-type-id="${typeId}"]`)) {
+            showCreateMsg('Este tipo de campo já foi adicionado.', 'error');
+            return;
+        }
+
+        const opt  = typeSelect.options[typeSelect.selectedIndex];
+        const meta = fieldTypesMeta[typeId];
+        const icon = opt.getAttribute('data-icon');
+        const label = opt.getAttribute('data-label');
+        const inputType = opt.getAttribute('data-input-type');
+        const hint = meta ? getFieldHint(meta.name) : '';
+        const idx  = _createFieldIdx++;
+
+        document.getElementById('fields-empty').style.display = 'none';
+
+        const row = document.createElement('div');
+        row.className = 'field-row-item';
+        row.setAttribute('data-create-type-id', typeId);
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--gray-300);border-radius:var(--border-radius);background:var(--card-bg);margin-bottom:8px;';
+        row.innerHTML = `
+            <span style="width:34px;text-align:center;font-size:1.2em;color:var(--brand-blue);">
+                <i class="${icon}"></i>
+            </span>
+            <span style="min-width:120px;font-weight:600;font-size:.88em;color:var(--text-secondary);">${label}</span>
+            <div style="flex:1;">
+                <input type="${inputType === 'textarea' ? 'text' : inputType}"
+                       name="field_values[]"
+                       class="form-control"
+                       value="${value.replace(/"/g,'&quot;')}"
+                       style="margin:0;">
+                ${hint ? `<small style="color:var(--gray-400);font-size:.78em;">${hint}</small>` : ''}
+            </div>
+            <input type="hidden" name="field_type_ids[]" value="${typeId}">
+            <button type="button" class="btn btn-sm btn-danger"
+                    onclick="removeFieldRowCreate(this,'${typeId}')"
+                    title="Remover campo">
+                <i class="fas fa-trash"></i>
+            </button>`;
+        document.getElementById('fields-list').appendChild(row);
+
+        // Reset add-bar
+        typeSelect.value = '';
+        valueInput.value = '';
+        valueInput.type  = 'text';
+        valueInput.placeholder = 'Selecione um tipo acima';
+        valueInput.disabled = true;
+    }
+
+    function removeFieldRowCreate(btn, typeId) {
+        btn.closest('[data-create-type-id]').remove();
+        if (!document.querySelector('[data-create-type-id]')) {
+            document.getElementById('fields-empty').style.display = '';
+        }
+    }
+
+    function showCreateMsg(msg, type) {
+        const wrap = document.getElementById('create-field-messages');
+        wrap.innerHTML = `<div class="alert alert-${type === 'error' ? 'error' : 'success'}" style="margin-bottom:8px;">
+            <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'check-circle'}"></i> ${msg}</div>`;
+        setTimeout(() => { wrap.innerHTML = ''; }, 3000);
+    }
+
+    // ── Dicas contextuais por tipo de campo ────────────────────────────────────
+    function getFieldHint(name) {
+        const hints = {
+            whatsapp:      'Número com DDI+DDD, ex: 5511999998888',
+            phone:         'Número com DDD, ex: (11) 99999-8888',
+            pix:           'CPF, CNPJ, e-mail, telefone ou chave aleatória',
+            wifi_password: 'A senha será exibida publicamente no cartão',
+            wifi_ssid:     'Nome exato da rede Wi-Fi',
+            website:       'URL completa incluindo https://',
+            google_review: 'Link direto para avaliação no Google Maps',
+        };
+        return hints[name] || '';
+    }
+
+    // ── Preview de logo e slug ─────────────────────────────────────────────────
+    function previewImage(input, previewId) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById(previewId).src = e.target.result;
+            document.getElementById(previewId + '-container').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setupSlugGeneration('name', 'slug');
+        window.previewImage = previewImage;
+        window.addFieldRowCreate = addFieldRowCreate;
+        window.removeFieldRowCreate = removeFieldRowCreate;
+        window.onCreateTypeChange = onCreateTypeChange;
+    });
     </script>
 </body>
 </html>

@@ -146,76 +146,82 @@ $links = getProfileLinks($profile['id']);
             </div>
             <div class="profile-body">
                 <?php if (!empty($profile_fields)): ?>
+                    <?php
+                    // Pre-indexar wifi_password para uso no wifi_ssid
+                    $wifi_password_value = '';
+                    foreach ($profile_fields as $pf) {
+                        if ($pf['field_name'] === 'wifi_password') {
+                            $wifi_password_value = $pf['value'];
+                            break;
+                        }
+                    }
+                    ?>
                     <div class="profile-info">
                         <?php foreach ($profile_fields as $field): ?>
-                            <?php if ($field['is_clickable'] && in_array($field['input_type'], ['url', 'email', 'tel'])): ?>
-                                <a href="<?php 
-                                    switch($field['input_type']) {
-                                        case 'email':
-                                            echo 'mailto:' . htmlspecialchars($field['value']);
-                                            break;
-                                        case 'tel':
-                                            if ($field['field_name'] === 'whatsapp') {
-                                                echo '#" onclick="openWhatsApp(\'' . preg_replace('/[^0-9]/', '', $field['value']) . '\', \'Olá! Vi seu perfil no CloudiTag.\')';
-                                            } else {
-                                                echo 'tel:' . preg_replace('/[^0-9]/', '', $field['value']);
-                                            }
-                                            break;
-                                        case 'url':
-                                            if ($field['field_name'] === 'address') {
-                                                echo '#" onclick="openMaps(\'' . htmlspecialchars($field['value']) . '\')';
-                                            } elseif ($field['field_name'] === 'pix') {
-                                                echo '#" onclick="copyToClipboard(\'' . htmlspecialchars($field['value']) . '\')';
-                                            } elseif ($field['field_name'] === 'wifi_ssid') {
-                                                $wifi_password = '';
-                                                foreach ($profile_fields as $pf) {
-                                                    if ($pf['field_name'] === 'wifi_password') {
-                                                        $wifi_password = $pf['value'];
-                                                        break;
-                                                    }
-                                                }
-                                                echo '#" onclick="connectWiFi(\'' . htmlspecialchars($field['value']) . '\', \'" . htmlspecialchars($wifi_password) . "\')';
-                                            } else {
-                                                echo htmlspecialchars($field['value']);
-                                            }
-                                            break;
-                                        default:
-                                            echo htmlspecialchars($field['value']);
+                            <?php
+                            // Campos que não aparecem como item próprio
+                            if ($field['field_name'] === 'wifi_password') continue;
+
+                            // Determinar comportamento por field_name
+                            $tag       = 'div';
+                            $href      = '';
+                            $extra     = '';
+                            $display   = htmlspecialchars($field['value'] ?? '');
+                            $icon      = $field['icon'] ?: 'fas fa-info-circle';
+
+                            switch ($field['field_name']) {
+                                case 'whatsapp':
+                                    $tag   = 'a';
+                                    $num   = preg_replace('/[^0-9]/', '', $field['value']);
+                                    $href  = "#\" onclick=\"openWhatsApp('{$num}', 'Olá! Vi seu perfil no CloudiTag.')";
+                                    $display = formatPhone($field['value']);
+                                    break;
+                                case 'phone':
+                                    $tag   = 'a';
+                                    $num   = preg_replace('/[^0-9]/', '', $field['value']);
+                                    $href  = "tel:{$num}";
+                                    $display = formatPhone($field['value']);
+                                    break;
+                                case 'email':
+                                    $tag   = 'a';
+                                    $href  = 'mailto:' . htmlspecialchars($field['value']);
+                                    break;
+                                case 'pix':
+                                    $tag   = 'a';
+                                    $val   = htmlspecialchars($field['value'], ENT_QUOTES);
+                                    $href  = "#\" onclick=\"copyToClipboard('{$val}')";
+                                    $display = 'PIX: ' . htmlspecialchars($field['value']);
+                                    break;
+                                case 'address':
+                                    $tag   = 'a';
+                                    $val   = urlencode($field['value']);
+                                    $href  = "#\" onclick=\"openMaps('" . htmlspecialchars($field['value'], ENT_QUOTES) . "')";
+                                    $display = htmlspecialchars($field['value']);
+                                    break;
+                                case 'wifi_ssid':
+                                    $tag   = 'a';
+                                    $ssid  = htmlspecialchars($field['value'], ENT_QUOTES);
+                                    $pw    = htmlspecialchars($wifi_password_value, ENT_QUOTES);
+                                    $href  = "#\" onclick=\"connectWiFi('{$ssid}', '{$pw}')";
+                                    $display = 'Wi-Fi: ' . htmlspecialchars($field['value']);
+                                    break;
+                                default:
+                                    // URL fields → external link
+                                    if ($field['input_type'] === 'url' && $field['is_clickable']) {
+                                        $tag   = 'a';
+                                        $href  = htmlspecialchars($field['value']);
+                                        $extra = 'target="_blank"';
                                     }
-                                ?>" 
-                                <?php if ($field['input_type'] === 'url' && !in_array($field['field_name'], ['address', 'pix', 'wifi_ssid'])): ?>
-                                    target="_blank"
-                                <?php endif; ?>
-                                class="info-item">
-                                    <?php if ($field['icon']): ?>
-                                        <i class="<?php echo htmlspecialchars($field['icon']); ?>"></i>
-                                    <?php else: ?>
-                                        <i class="fas fa-info-circle"></i>
-                                    <?php endif; ?>
-                                    <span>
-                                        <?php 
-                                        if ($field['input_type'] === 'tel') {
-                                            echo formatPhone($field['value']);
-                                        } elseif ($field['field_name'] === 'pix') {
-                                            echo 'PIX: ' . htmlspecialchars($field['value']);
-                                        } elseif ($field['field_name'] === 'wifi_ssid') {
-                                            echo 'WiFi: ' . htmlspecialchars($field['value']);
-                                        } else {
-                                            echo htmlspecialchars($field['value']);
-                                        }
-                                        ?>
-                                    </span>
-                                </a>
+                            }
+                            ?>
+                            <?php if ($tag === 'a'): ?>
+                                <a href="<?php echo $href; ?>" <?php echo $extra; ?> class="info-item">
                             <?php else: ?>
                                 <div class="info-item">
-                                    <?php if ($field['icon']): ?>
-                                        <i class="<?php echo htmlspecialchars($field['icon']); ?>"></i>
-                                    <?php else: ?>
-                                        <i class="fas fa-info-circle"></i>
-                                    <?php endif; ?>
-                                    <span><?php echo nl2br(htmlspecialchars($field['value'])); ?></span>
-                                </div>
                             <?php endif; ?>
+                                    <i class="<?php echo htmlspecialchars($icon); ?>"></i>
+                                    <span><?php echo nl2br($display); ?></span>
+                            <?php echo "</{$tag}>"; ?>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>

@@ -305,13 +305,13 @@ if ($_POST && !isset($_POST['action'])) {
                             <!-- Adicionar Novo Campo -->
                             <div class="add-field-section mb-4 p-3" style="background: var(--gray-50); border-radius: var(--border-radius); border: 2px dashed var(--gray-300);">
                                 <h4><i class="fas fa-plus-circle text-success"></i> Adicionar Campo</h4>
-                                <div class="row">
+                                <div class="row" style="gap:0;">
                                     <div class="col-4">
+                                        <label style="font-size:.83em;margin-bottom:4px;display:block;">Tipo</label>
                                         <select id="new-field-type" class="form-control">
                                             <option value="">Selecione um tipo de campo</option>
                                             <?php foreach ($field_types as $field_type): ?>
                                                 <?php 
-                                                // Verificar se o campo já existe
                                                 $field_exists = false;
                                                 foreach ($profile_fields as $existing_field) {
                                                     if ($existing_field['field_type_id'] == $field_type['id']) {
@@ -324,6 +324,7 @@ if ($_POST && !isset($_POST['action'])) {
                                                     <option value="<?php echo $field_type['id']; ?>" 
                                                             data-icon="<?php echo $field_type['icon']; ?>"
                                                             data-type="<?php echo $field_type['input_type']; ?>"
+                                                            data-name="<?php echo htmlspecialchars($field_type['name']); ?>"
                                                             data-placeholder="<?php echo htmlspecialchars($field_type['placeholder']); ?>">
                                                         <?php echo htmlspecialchars($field_type['label']); ?>
                                                     </option>
@@ -332,10 +333,12 @@ if ($_POST && !isset($_POST['action'])) {
                                         </select>
                                     </div>
                                     <div class="col-6">
-                                        <input type="text" id="new-field-value" class="form-control" placeholder="Digite o valor do campo">
+                                        <label style="font-size:.83em;margin-bottom:4px;display:block;">Valor</label>
+                                        <input type="text" id="new-field-value" class="form-control" placeholder="Selecione um tipo acima" disabled>
+                                        <small id="new-field-hint" style="color:var(--gray-400);font-size:.78em;"></small>
                                     </div>
-                                    <div class="col-2">
-                                        <button type="button" class="btn btn-success" onclick="addField()">
+                                    <div class="col-2" style="display:flex;align-items:flex-end;">
+                                        <button type="button" class="btn btn-success" onclick="addField()" style="width:100%">
                                             <i class="fas fa-plus"></i> Adicionar
                                         </button>
                                     </div>
@@ -346,56 +349,65 @@ if ($_POST && !isset($_POST['action'])) {
                             <h4><i class="fas fa-list"></i> Campos Atuais</h4>
                             <div id="fields-container">
                                 <?php if (empty($profile_fields)): ?>
-                                    <div class="empty-fields text-center p-4" style="color: var(--gray-500);">
+                                    <div class="empty-fields text-center p-4" id="no-fields-msg" style="color: var(--gray-500);">
                                         <i class="fas fa-inbox fa-3x mb-3"></i>
                                         <p>Nenhum campo adicionado ainda. Use o formulário acima para adicionar campos ao seu perfil.</p>
                                     </div>
                                 <?php else: ?>
                                     <?php foreach ($profile_fields as $field): ?>
-                                        <div class="field-item mb-3 p-3" style="border: 1px solid var(--gray-300); border-radius: var(--border-radius); background: white;" data-field-id="<?php echo $field['id']; ?>">
-                                            <div class="row align-items-center">
-                                                <div class="col-1 text-center">
-                                                    <i class="<?php echo $field['icon']; ?> fa-lg" style="color: var(--primary-color);"></i>
-                                                </div>
-                                                <div class="col-2">
-                                                    <strong><?php echo htmlspecialchars($field['label']); ?></strong>
-                                                </div>
-                                                <div class="col-5">
-                                                    <?php if ($field['input_type'] === 'textarea'): ?>
-                                                        <textarea class="form-control field-value" 
-                                                                data-field-id="<?php echo $field['id']; ?>"
-                                                                placeholder="<?php echo htmlspecialchars($field['placeholder'] ?? ''); ?>"
-                                                                rows="2"><?php echo htmlspecialchars($field['value'] ?? ''); ?></textarea>
-                                                    <?php else: ?>
-                                                        <input type="<?php echo htmlspecialchars($field['input_type']); ?>" 
-                                                               class="form-control field-value" 
-                                                               data-field-id="<?php echo $field['id']; ?>"
-                                                               value="<?php echo htmlspecialchars($field['value'] ?? ''); ?>"
-                                                               placeholder="<?php echo htmlspecialchars($field['placeholder'] ?? ''); ?>">
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="col-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input type="checkbox" class="form-check-input field-visible" 
-                                                               data-field-id="<?php echo $field['id']; ?>"
-                                                               <?php echo $field['is_visible'] ? 'checked' : ''; ?>>
-                                                        <label class="form-check-label">Visível</label>
-                                                    </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input type="checkbox" class="form-check-input field-clickable" 
-                                                               data-field-id="<?php echo $field['id']; ?>"
-                                                               <?php echo $field['is_clickable'] ? 'checked' : ''; ?>>
-                                                        <label class="form-check-label">Clicável</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-2 text-end">
-                                                    <button type="button" class="btn btn-sm btn-primary me-1" onclick="updateField(<?php echo $field['id']; ?>)">
-                                                        <i class="fas fa-save"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-danger" onclick="removeField(<?php echo $field['id']; ?>)">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
+                                        <?php
+                                            $hints = [
+                                                'whatsapp'     => 'Número com DDI+DDD, ex´: 5511999998888',
+                                                'phone'        => 'Número com DDD, ex: (11) 99999-8888',
+                                                'pix'          => 'CPF, CNPJ, e-mail, telefone ou chave aleatória',
+                                                'wifi_password' => 'A senha será exibida publicamente no cartão',
+                                                'wifi_ssid'    => 'Nome exato da rede Wi-Fi',
+                                                'website'      => 'URL completa incluindo https://',
+                                                'google_review' => 'Link direto para avaliação no Google Maps',
+                                            ];
+                                            $hint = $hints[$field['field_name']] ?? '';
+                                        ?>
+                                        <div class="field-item" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--gray-300);border-radius:var(--border-radius);background:var(--card-bg);margin-bottom:8px;" data-field-id="<?php echo $field['id']; ?>">
+                                            <span style="width:34px;text-align:center;font-size:1.2em;color:var(--brand-blue);flex-shrink:0;">
+                                                <i class="<?php echo htmlspecialchars($field['icon']); ?>"></i>
+                                            </span>
+                                            <span style="min-width:110px;font-weight:600;font-size:.88em;color:var(--text-secondary);flex-shrink:0;">
+                                                <?php echo htmlspecialchars($field['label']); ?>
+                                            </span>
+                                            <div style="flex:1;">
+                                                <?php if ($field['input_type'] === 'textarea'): ?>
+                                                    <textarea class="form-control field-value" 
+                                                            data-field-id="<?php echo $field['id']; ?>"
+                                                            placeholder="<?php echo htmlspecialchars($field['placeholder'] ?? ''); ?>"
+                                                            rows="2"
+                                                            style="margin:0;"><?php echo htmlspecialchars($field['value'] ?? ''); ?></textarea>
+                                                <?php else: ?>
+                                                    <input type="<?php echo htmlspecialchars($field['input_type']); ?>" 
+                                                           class="form-control field-value" 
+                                                           data-field-id="<?php echo $field['id']; ?>"
+                                                           value="<?php echo htmlspecialchars($field['value'] ?? ''); ?>"
+                                                           placeholder="<?php echo htmlspecialchars($field['placeholder'] ?? ''); ?>"
+                                                           style="margin:0;">
+                                                <?php endif; ?>
+                                                <?php if ($hint): ?>
+                                                    <small style="color:var(--gray-400);font-size:.78em;"><?php echo $hint; ?></small>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+                                                <label style="display:flex;align-items:center;gap:4px;font-size:.8em;white-space:nowrap;cursor:pointer;">
+                                                    <input type="checkbox" class="field-visible" data-field-id="<?php echo $field['id']; ?>" <?php echo $field['is_visible'] ? 'checked' : ''; ?>> Visível
+                                                </label>
+                                                <label style="display:flex;align-items:center;gap:4px;font-size:.8em;white-space:nowrap;cursor:pointer;">
+                                                    <input type="checkbox" class="field-clickable" data-field-id="<?php echo $field['id']; ?>" <?php echo $field['is_clickable'] ? 'checked' : ''; ?>> Clicável
+                                                </label>
+                                            </div>
+                                            <div style="display:flex;gap:6px;flex-shrink:0;">
+                                                <button type="button" class="btn btn-sm btn-primary" onclick="updateField(<?php echo $field['id']; ?>)" title="Salvar">
+                                                    <i class="fas fa-save"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="removeField(<?php echo $field['id']; ?>)" title="Remover">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
@@ -545,24 +557,17 @@ if ($_POST && !isset($_POST['action'])) {
             .then(data => {
                 if (data.success) {
                     showMessage(data.message, 'success');
-                    // Remover elemento com animação
                     const fieldItem = document.querySelector(`[data-field-id="${fieldId}"]`);
                     fieldItem.style.transition = 'all 0.3s ease';
                     fieldItem.style.opacity = '0';
-                    fieldItem.style.transform = 'translateX(-100%)';
+                    fieldItem.style.transform = 'translateX(-20px)';
                     
                     setTimeout(() => {
                         fieldItem.remove();
-                        
-                        // Verificar se não há mais campos
-                        const fieldsContainer = document.getElementById('fields-container');
-                        if (fieldsContainer.children.length === 0) {
-                            fieldsContainer.innerHTML = `
-                                <div class="empty-fields text-center p-4" style="color: var(--gray-500);">
-                                    <i class="fas fa-inbox fa-3x mb-3"></i>
-                                    <p>Nenhum campo adicionado ainda. Use o formulário acima para adicionar campos ao seu perfil.</p>
-                                </div>
-                            `;
+                        const remaining = document.querySelectorAll('#fields-container [data-field-id]');
+                        if (remaining.length === 0) {
+                            const emptyMsg = document.getElementById('no-fields-msg');
+                            if (emptyMsg) emptyMsg.style.display = '';
                         }
                     }, 300);
                 } else {
@@ -575,11 +580,36 @@ if ($_POST && !isset($_POST['action'])) {
             });
         }
         
-        // Atualizar placeholder quando mudar o tipo de campo
+        // ── Atualiza input conforme tipo selecionado ────────────────────────
+        const fieldHints = {
+            whatsapp:      'Número com DDI+DDD, ex: 5511999998888',
+            phone:         'Número com DDD, ex: (11) 99999-8888',
+            pix:           'CPF, CNPJ, e-mail, telefone ou chave aleatória',
+            wifi_password: 'A senha será exibida publicamente no cartão',
+            wifi_ssid:     'Nome exato da rede Wi-Fi',
+            website:       'URL completa incluindo https://',
+            google_review: 'Link direto para avaliação no Google Maps',
+        };
+
         document.getElementById('new-field-type').addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const placeholder = selectedOption.getAttribute('data-placeholder');
-            document.getElementById('new-field-value').placeholder = placeholder || 'Digite o valor do campo';
+            const opt = this.options[this.selectedIndex];
+            const valueInput = document.getElementById('new-field-value');
+            const hintEl = document.getElementById('new-field-hint');
+            if (!opt.value) {
+                valueInput.disabled = true;
+                valueInput.type = 'text';
+                valueInput.placeholder = 'Selecione um tipo acima';
+                valueInput.value = '';
+                hintEl.textContent = '';
+                return;
+            }
+            const inputType = opt.getAttribute('data-type') || 'text';
+            const name = opt.getAttribute('data-name') || '';
+            valueInput.type = inputType === 'textarea' ? 'text' : inputType;
+            valueInput.placeholder = opt.getAttribute('data-placeholder') || 'Digite o valor';
+            valueInput.disabled = false;
+            hintEl.textContent = fieldHints[name] || '';
+            valueInput.focus();
         });
         
         // Tornar funções globais
