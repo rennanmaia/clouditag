@@ -32,6 +32,96 @@ $layout = isset($profile['layout_template']) ? $profile['layout_template'] : 'cl
 if (!isset($layout_options[$layout])) {
     $layout = 'classic';
 }
+
+// Helper para renderizar um item de informação do perfil
+// $variant: 'card' (default, usado nos 4 primeiros do highlight e nos outros layouts)
+//           'link' (usado para os demais itens no layout highlight, visual de link comum)
+function renderProfileFieldItemPublic(array $field, string $wifi_password_value = '', string $variant = 'card'): void {
+    // Campo de senha de Wi-Fi não aparece diretamente
+    if (($field['field_name'] ?? '') === 'wifi_password') {
+        return;
+    }
+
+    $tag     = 'div';
+    $href    = '';
+    $extra   = '';
+    $value   = $field['value'] ?? '';
+    $display = htmlspecialchars($value);
+    $icon    = $field['icon'] ?: 'fas fa-info-circle';
+
+    switch ($field['field_name']) {
+        case 'whatsapp':
+            $tag   = 'a';
+            $num   = preg_replace('/[^0-9]/', '', $value);
+            $href  = "#\" onclick=\"openWhatsApp('{$num}', 'Olá! Vi seu perfil no CloudiTag.')";
+            $display = formatPhone($value);
+            break;
+        case 'phone':
+            $tag   = 'a';
+            $num   = preg_replace('/[^0-9]/', '', $value);
+            $href  = "tel:{$num}";
+            $display = formatPhone($value);
+            break;
+        case 'email':
+            $tag   = 'a';
+            $href  = 'mailto:' . htmlspecialchars($value);
+            break;
+        case 'pix':
+            $tag   = 'a';
+            $val   = htmlspecialchars($value, ENT_QUOTES);
+            $href  = "#\" onclick=\"copyToClipboard('{$val}')";
+            $display = 'PIX: ' . htmlspecialchars($value);
+            break;
+        case 'address':
+            $tag   = 'a';
+            $href  = "#\" onclick=\"openMaps('" . htmlspecialchars($value, ENT_QUOTES) . "')";
+            $display = htmlspecialchars($value);
+            break;
+        case 'wifi_ssid':
+            $tag   = 'a';
+            $ssid  = htmlspecialchars($value, ENT_QUOTES);
+            $pw    = htmlspecialchars($wifi_password_value, ENT_QUOTES);
+            $href  = "#\" onclick=\"connectWiFi('{$ssid}', '{$pw}')";
+            $display = 'Wi-Fi: ' . htmlspecialchars($value);
+            break;
+        default:
+            if (($field['input_type'] ?? '') === 'url' && !empty($field['is_clickable'])) {
+                $tag   = 'a';
+                $href  = htmlspecialchars($value);
+                $extra = 'target="_blank"';
+            }
+    }
+
+    if ($variant === 'link') {
+        // Estilo de link normal
+        if ($tag === 'a') {
+            echo '<a href="' . $href . '" ' . $extra . ' class="link-item">';
+        } else {
+            echo '<div class="link-item">';
+        }
+        echo '<i class="' . htmlspecialchars($icon) . '"></i>';
+        echo '<span>' . nl2br($display) . '</span>';
+        if ($tag === 'a') {
+            echo '</a>';
+        } else {
+            echo '</div>';
+        }
+    } else {
+        // Estilo card/plaquinha (ícone grande em cima, valor embaixo)
+        if ($tag === 'a') {
+            echo '<a href="' . $href . '" ' . $extra . ' class="info-item">';
+        } else {
+            echo '<div class="info-item">';
+        }
+        echo '<i class="' . htmlspecialchars($icon) . '"></i>';
+        echo '<span>' . nl2br($display) . '</span>';
+        if ($tag === 'a') {
+            echo '</a>';
+        } else {
+            echo '</div>';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -150,23 +240,47 @@ if (!isset($layout_options[$layout])) {
         body.layout-highlight .profile-body {
             padding-top: 10px;
         }
-        body.layout-highlight .profile-actions-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+
+        /* Grade principal com até 4 ícones grandes */
+        body.layout-highlight .profile-primary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
             margin-bottom: 20px;
         }
-        body.layout-highlight .profile-actions-row .info-item {
-            flex: 1 1 calc(50% - 5px);
+        body.layout-highlight .profile-primary-grid .info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 18px 12px;
+            border-radius: 18px;
+            text-align: center;
+        }
+        body.layout-highlight .profile-primary-grid .info-item i {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+        body.layout-highlight .profile-primary-grid .info-item span {
+            font-size: 0.8rem;
+            opacity: .9;
+        }
+
+        /* Lista secundária com botões menores */
+        body.layout-highlight .profile-secondary {
+            margin-top: 4px;
+        }
+        body.layout-highlight .profile-secondary .info-item {
             border-radius: 999px;
         }
+
         @media (max-width: 480px) {
             body.layout-highlight .profile-header-inner {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            body.layout-highlight .profile-actions-row .info-item {
-                flex: 1 1 100%;
+            body.layout-highlight .profile-primary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
@@ -278,79 +392,42 @@ if (!isset($layout_options[$layout])) {
                             break;
                         }
                     }
-                    ?>
-                    <?php if ($layout === 'highlight'): ?>
-                        <div class="profile-actions-row profile-info">
-                    <?php else: ?>
-                        <div class="profile-info">
-                    <?php endif; ?>
-                        <?php foreach ($profile_fields as $field): ?>
-                            <?php
-                            // Campos que não aparecem como item próprio
-                            if ($field['field_name'] === 'wifi_password') continue;
 
-                            // Determinar comportamento por field_name
-                            $tag       = 'div';
-                            $href      = '';
-                            $extra     = '';
-                            $display   = htmlspecialchars($field['value'] ?? '');
-                            $icon      = $field['icon'] ?: 'fas fa-info-circle';
-
-                            switch ($field['field_name']) {
-                                case 'whatsapp':
-                                    $tag   = 'a';
-                                    $num   = preg_replace('/[^0-9]/', '', $field['value']);
-                                    $href  = "#\" onclick=\"openWhatsApp('{$num}', 'Olá! Vi seu perfil no CloudiTag.')";
-                                    $display = formatPhone($field['value']);
-                                    break;
-                                case 'phone':
-                                    $tag   = 'a';
-                                    $num   = preg_replace('/[^0-9]/', '', $field['value']);
-                                    $href  = "tel:{$num}";
-                                    $display = formatPhone($field['value']);
-                                    break;
-                                case 'email':
-                                    $tag   = 'a';
-                                    $href  = 'mailto:' . htmlspecialchars($field['value']);
-                                    break;
-                                case 'pix':
-                                    $tag   = 'a';
-                                    $val   = htmlspecialchars($field['value'], ENT_QUOTES);
-                                    $href  = "#\" onclick=\"copyToClipboard('{$val}')";
-                                    $display = 'PIX: ' . htmlspecialchars($field['value']);
-                                    break;
-                                case 'address':
-                                    $tag   = 'a';
-                                    $val   = urlencode($field['value']);
-                                    $href  = "#\" onclick=\"openMaps('" . htmlspecialchars($field['value'], ENT_QUOTES) . "')";
-                                    $display = htmlspecialchars($field['value']);
-                                    break;
-                                case 'wifi_ssid':
-                                    $tag   = 'a';
-                                    $ssid  = htmlspecialchars($field['value'], ENT_QUOTES);
-                                    $pw    = htmlspecialchars($wifi_password_value, ENT_QUOTES);
-                                    $href  = "#\" onclick=\"connectWiFi('{$ssid}', '{$pw}')";
-                                    $display = 'Wi-Fi: ' . htmlspecialchars($field['value']);
-                                    break;
-                                default:
-                                    // URL fields → external link
-                                    if ($field['input_type'] === 'url' && $field['is_clickable']) {
-                                        $tag   = 'a';
-                                        $href  = htmlspecialchars($field['value']);
-                                        $extra = 'target="_blank"';
-                                    }
+                    if ($layout === 'highlight') {
+                        // Separar campos em principais (até 4) e restantes
+                        $renderable_fields = [];
+                        foreach ($profile_fields as $pf) {
+                            if ($pf['field_name'] === 'wifi_password') {
+                                continue;
                             }
-                            ?>
-                            <?php if ($tag === 'a'): ?>
-                                <a href="<?php echo $href; ?>" <?php echo $extra; ?> class="info-item">
-                            <?php else: ?>
-                                <div class="info-item">
-                            <?php endif; ?>
-                                    <i class="<?php echo htmlspecialchars($icon); ?>"></i>
-                                    <span><?php echo nl2br($display); ?></span>
-                            <?php echo "</{$tag}>"; ?>
-                        <?php endforeach; ?>
-                    </div>
+                            $renderable_fields[] = $pf;
+                        }
+
+                        $primary_fields   = array_slice($renderable_fields, 0, 4);
+                        $secondary_fields = array_slice($renderable_fields, 4);
+                    ?>
+                        <?php if (!empty($primary_fields)): ?>
+                            <div class="profile-primary-grid">
+                                <?php foreach ($primary_fields as $field): ?>
+                                    <?php renderProfileFieldItemPublic($field, $wifi_password_value, 'card'); ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($secondary_fields)): ?>
+                            <div class="profile-links profile-secondary">
+                                <?php foreach ($secondary_fields as $field): ?>
+                                    <?php renderProfileFieldItemPublic($field, $wifi_password_value, 'link'); ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php } else { ?>
+                        <div class="profile-info">
+                            <?php foreach ($profile_fields as $field): ?>
+                                <?php renderProfileFieldItemPublic($field, $wifi_password_value, 'card'); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php } ?>
                 <?php endif; ?>
                 <?php if (!empty($links)): ?>
                     <div class="profile-links">
