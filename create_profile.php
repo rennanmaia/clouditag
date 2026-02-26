@@ -175,12 +175,10 @@ $field_types = getFieldTypes();
                                         <div class="form-group">
                                             <label for="slug">Slug (URL personalizada) *</label>
                                             <div class="input-group">
-                                                <span style="padding: 12px; background: var(--gray-100); border: 2px solid var(--gray-300); border-right: none; border-radius: var(--border-radius) 0 0 var(--border-radius);">
-                                                    <?php echo SITE_URL; ?>/profile/
-                                                </span>
-                                                <input type="text" class="form-control" name="slug" id="slug" 
+                                                <span class="input-group-prefix"><?php echo SITE_URL; ?>/profile/</span>
+                                                <input type="text" class="form-control slug-input" name="slug" id="slug" 
                                                        value="<?php echo isset($_POST['slug']) ? htmlspecialchars($_POST['slug']) : ''; ?>" 
-                                                       style="border-left: none; border-radius: 0 var(--border-radius) var(--border-radius) 0;" required>
+                                                       required>
                                             </div>
                                             <small class="text-muted">Apenas letras, números e hífens</small>
                                         </div>
