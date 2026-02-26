@@ -40,6 +40,23 @@ function getDB() {
     return Database::getInstance()->getConnection();
 }
 
+// Garante que a tabela de perfis tenha coluna de layout do cartão público
+function ensureProfileLayoutColumn() {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $db = getDB();
+        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'layout_template'");
+        if (!$stmt->fetch()) {
+            $db->exec("ALTER TABLE profiles ADD COLUMN layout_template VARCHAR(50) NOT NULL DEFAULT 'classic' AFTER profile_type");
+        }
+    } catch (Exception $e) {
+        // Se não conseguir alterar a tabela, apenas segue com o padrão em memória
+    }
+}
+
 // Função para verificar se usuário está logado
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
@@ -55,6 +72,24 @@ function getCurrentUser() {
     $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     return $stmt->fetch();
+}
+
+// Opções de layout para exibição pública do perfil
+function getProfileLayoutOptions() {
+    return [
+        'classic' => [
+            'label'       => 'Clássico (cartão central)',
+            'description' => 'Logo central, campos em cartões em grade, visual equilibrado.',
+        ],
+        'highlight' => [
+            'label'       => 'Destaque (hero + botões)',
+            'description' => 'Cabeçalho grande com foco em botões de ação e links.',
+        ],
+        'minimal' => [
+            'label'       => 'Minimalista (lista limpa)',
+            'description' => 'Layout clean, informações em lista, foco em legibilidade.',
+        ],
+    ];
 }
 
 // Função para verificar se é admin geral

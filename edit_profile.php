@@ -2,6 +2,9 @@
 session_start();
 require_once 'includes/functions.php';
 
+// Garantir coluna de layout em perfis
+ensureProfileLayoutColumn();
+
 // Verificar se está logado
 if (!isLoggedIn()) {
     redirect('login.php');
@@ -148,10 +151,11 @@ if (isset($_POST['action'])) {
 }
 
 if ($_POST && !isset($_POST['action'])) {
-    $profile_type = sanitize($_POST['profile_type']);
-    $name = sanitize($_POST['name']);
-    $slug = sanitize($_POST['slug']);
-    $description = sanitize($_POST['description']);
+    $profile_type    = sanitize($_POST['profile_type']);
+    $name            = sanitize($_POST['name']);
+    $slug            = sanitize($_POST['slug']);
+    $description     = sanitize($_POST['description']);
+    $layout_template = isset($_POST['layout_template']) ? sanitize($_POST['layout_template']) : ($profile['layout_template'] ?? 'classic');
     
     // Validações
     if (empty($profile_type) || empty($name) || empty($slug)) {
@@ -159,6 +163,12 @@ if ($_POST && !isset($_POST['action'])) {
     } elseif (!in_array($profile_type, ['empresa', 'profissional'])) {
         $error_message = 'Tipo de perfil inválido.';
     } else {
+        // Validar layout escolhido
+        $layout_options = array_keys(getProfileLayoutOptions());
+        if (!in_array($layout_template, $layout_options)) {
+            $layout_template = 'classic';
+        }
+
         // Verificar se slug já existe (exceto o próprio perfil)
         $stmt = $db->prepare("SELECT COUNT(*) FROM profiles WHERE slug = ? AND id != ?");
         $stmt->execute([$slug, $profile_id]);
@@ -348,6 +358,33 @@ if ($_POST && !isset($_POST['action'])) {
                                 <div class="form-group">
                                     <label for="description">Descrição</label>
                                     <textarea class="form-control" name="description" id="description" rows="3" data-auto-resize><?php echo htmlspecialchars($profile['description']); ?></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Layout do Cartão Público</label>
+                                    <div class="row">
+                                        <?php
+                                        $layout_options_cfg = getProfileLayoutOptions();
+                                        $current_layout = isset($profile['layout_template']) ? $profile['layout_template'] : 'classic';
+                                        if (isset($_POST['layout_template'])) {
+                                            $posted_layout = sanitize($_POST['layout_template']);
+                                            if (isset($layout_options_cfg[$posted_layout])) {
+                                                $current_layout = $posted_layout;
+                                            }
+                                        }
+                                        if (!isset($layout_options_cfg[$current_layout])) {
+                                            $current_layout = 'classic';
+                                        }
+                                        foreach ($layout_options_cfg as $key => $opt): ?>
+                                            <div class="col-4">
+                                                <label class="card" style="cursor:pointer;padding:14px;display:block;">
+                                                    <input type="radio" name="layout_template" value="<?php echo htmlspecialchars($key); ?>" <?php echo ($current_layout === $key ? 'checked' : ''); ?> style="margin-right:6px;">
+                                                    <div style="font-weight:600;font-size:13px;margin-bottom:4px;"><?php echo htmlspecialchars($opt['label']); ?></div>
+                                                    <div style="font-size:12px;color:var(--text-muted);"><?php echo htmlspecialchars($opt['description']); ?></div>
+                                                </label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                                 
                                 <!-- Preview da nova logo -->

@@ -12,10 +12,11 @@ $error_message = '';
 $success_message = '';
 
 if ($_POST) {
-    $profile_type = sanitize($_POST['profile_type']);
-    $name = sanitize($_POST['name']);
-    $slug = sanitize($_POST['slug']);
-    $description = sanitize($_POST['description']);
+    $profile_type    = sanitize($_POST['profile_type']);
+    $name            = sanitize($_POST['name']);
+    $slug            = sanitize($_POST['slug']);
+    $description     = sanitize($_POST['description']);
+    $layout_template = isset($_POST['layout_template']) ? sanitize($_POST['layout_template']) : 'classic';
     
     // Validações básicas
     if (empty($profile_type) || empty($name) || empty($slug)) {
@@ -24,6 +25,13 @@ if ($_POST) {
         $error_message = 'Tipo de perfil inválido.';
     } else {
         $db = getDB();
+        
+        // Garantir coluna de layout em perfis
+        ensureProfileLayoutColumn();
+        $layout_keys = array_keys(getProfileLayoutOptions());
+        if (!in_array($layout_template, $layout_keys)) {
+            $layout_template = 'classic';
+        }
         
         // Verificar se slug já existe
         $stmt = $db->prepare("SELECT COUNT(*) FROM profiles WHERE slug = ?");
@@ -90,10 +98,10 @@ $field_types = getFieldTypes();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar Perfil - CloudiTag</title>
+                // Inserir perfil básico já com layout_template
+                $stmt = $db->prepare("\n                    INSERT INTO profiles (user_id, profile_type, layout_template, name, slug, description, logo, created_at) \n                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n                ");
+                
+                if ($stmt->execute([$user['id'], $profile_type, $layout_template, $name, $slug, $description, $logo_filename, date('Y-m-d H:i:s')])) {
     <script>(function(){var t=localStorage.getItem('clouditag_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
@@ -194,6 +202,27 @@ $field_types = getFieldTypes();
                                 <div class="form-group">
                                     <label for="description">Descrição</label>
                                     <textarea class="form-control" name="description" id="description" rows="3" data-auto-resize><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Layout do Cartão Público</label>
+                                    <div class="row">
+                                        <?php
+                                        $layout_options_cfg = getProfileLayoutOptions();
+                                        $current_layout = isset($_POST['layout_template']) ? sanitize($_POST['layout_template']) : 'classic';
+                                        if (!isset($layout_options_cfg[$current_layout])) {
+                                            $current_layout = 'classic';
+                                        }
+                                        foreach ($layout_options_cfg as $key => $opt): ?>
+                                            <div class="col-4">
+                                                <label class="card" style="cursor:pointer;padding:14px;display:block;">
+                                                    <input type="radio" name="layout_template" value="<?php echo htmlspecialchars($key); ?>" <?php echo ($current_layout === $key ? 'checked' : ''); ?> style="margin-right:6px;">
+                                                    <div style="font-weight:600;font-size:13px;margin-bottom:4px;"><?php echo htmlspecialchars($opt['label']); ?></div>
+                                                    <div style="font-size:12px;color:var(--text-muted);"><?php echo htmlspecialchars($opt['description']); ?></div>
+                                                </label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                                 
                                 <!-- ===== CAMPOS DINÂMICOS ===== -->

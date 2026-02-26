@@ -1,6 +1,9 @@
 <?php
 require_once '../includes/functions.php';
 
+// Garante que a coluna de layout exista (para bases antigas)
+ensureProfileLayoutColumn();
+
 // Obter slug da URL
 $slug = isset($_GET['slug']) ? sanitize($_GET['slug']) : '';
 
@@ -22,6 +25,13 @@ $profile_fields = getProfileFields($profile['id']);
 
 // Obter links personalizados
 $links = getProfileLinks($profile['id']);
+
+// Layout do cartão público
+$layout_options = getProfileLayoutOptions();
+$layout = isset($profile['layout_template']) ? $profile['layout_template'] : 'classic';
+if (!isset($layout_options[$layout])) {
+    $layout = 'classic';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -45,7 +55,7 @@ $links = getProfileLinks($profile['id']);
     <link href="../assets/css/style.css" rel="stylesheet">
     <script>(function(){var t=localStorage.getItem('clouditag_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
     <style>
-        /* Profile public page - centered card layout */
+        /* Base da página de perfil */
         body.profile-page {
             display: flex;
             align-items: flex-start;
@@ -55,7 +65,7 @@ $links = getProfileLinks($profile['id']);
         }
         .profile-main {
             width: 100%;
-            max-width: 580px;
+            max-width: 620px;
             min-height: 100vh;
         }
         .profile-card {
@@ -63,26 +73,6 @@ $links = getProfileLinks($profile['id']);
             min-height: 100vh;
             box-shadow: var(--shadow-lg);
         }
-        .profile-header {
-            padding: 44px 28px 28px;
-        }
-        .profile-logo {
-            width: 110px; height: 110px;
-            border-radius: 50%;
-            margin: 0 auto 16px;
-            border: 4px solid rgba(255,255,255,.35);
-            box-shadow: 0 4px 20px rgba(0,0,0,.2);
-            object-fit: cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            color: rgba(255,255,255,.85);
-            background: rgba(255,255,255,.18);
-        }
-        .profile-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-        .profile-name { color: #fff; }
-        .profile-description { color: rgba(255,255,255,.8); }
         .profile-share-btn {
             position: absolute;
             top: 18px; right: 18px;
@@ -98,17 +88,125 @@ $links = getProfileLinks($profile['id']);
             backdrop-filter: blur(4px);
         }
         .profile-share-btn:hover { background: rgba(255,255,255,.4); transform: none; }
-        .profile-header { position: relative; }
-        .profile-info {
+
+        /* Logo comum */
+        .profile-logo {
+            width: 110px; height: 110px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            border: 4px solid rgba(255,255,255,.35);
+            box-shadow: 0 4px 20px rgba(0,0,0,.2);
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: rgba(255,255,255,.85);
+            background: rgba(255,255,255,.18);
+        }
+        .profile-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+        /* Layout clássico (mantém o visual atual) */
+        body.layout-classic .profile-header {
+            padding: 44px 28px 28px;
+        }
+        body.layout-classic .profile-name {
+            color: #fff;
+        }
+        body.layout-classic .profile-description {
+            color: rgba(255,255,255,.8);
+        }
+        body.layout-classic .profile-info {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 24px;
         }
+
+        /* Layout destaque: hero grande com botões de ação */
+        body.layout-highlight .profile-card {
+            min-height: 100vh;
+        }
+        body.layout-highlight .profile-header {
+            padding: 52px 28px 32px;
+            text-align: left;
+        }
+        body.layout-highlight .profile-logo {
+            margin: 0 0 16px 0;
+        }
+        body.layout-highlight .profile-header-inner {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+        }
+        body.layout-highlight .profile-name {
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        body.layout-highlight .profile-description {
+            color: rgba(255,255,255,.85);
+            font-size: 0.95rem;
+        }
+        body.layout-highlight .profile-body {
+            padding-top: 10px;
+        }
+        body.layout-highlight .profile-actions-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        body.layout-highlight .profile-actions-row .info-item {
+            flex: 1 1 calc(50% - 5px);
+            border-radius: 999px;
+        }
         @media (max-width: 480px) {
-            .profile-info { grid-template-columns: 1fr; }
+            body.layout-highlight .profile-header-inner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            body.layout-highlight .profile-actions-row .info-item {
+                flex: 1 1 100%;
+            }
+        }
+
+        /* Layout minimalista: informações em lista limpa */
+        body.layout-minimal .profile-card {
+            box-shadow: none;
+        }
+        body.layout-minimal .profile-header {
+            padding: 32px 20px 16px;
+            text-align: center;
+        }
+        body.layout-minimal .profile-logo {
+            width: 90px;
+            height: 90px;
+            margin-bottom: 12px;
+        }
+        body.layout-minimal .profile-name {
+            color: var(--text-primary);
+        }
+        body.layout-minimal .profile-description {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        body.layout-minimal .profile-body {
+            padding: 16px 16px 24px;
+        }
+        body.layout-minimal .profile-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        body.layout-minimal .info-item {
+            border-radius: 10px;
+            background: var(--card-bg-alt);
+        }
+
+        @media (max-width: 480px) {
             .profile-body { padding: 20px 16px; }
         }
+
         .profile-footer {
             text-align: center;
             margin-top: 32px;
@@ -120,30 +218,55 @@ $links = getProfileLinks($profile['id']);
         .profile-footer a { color: var(--brand-blue); }
     </style>
 </head>
-<body class="profile-page">
+<body class="profile-page layout-<?php echo htmlspecialchars($layout); ?>">
     <button class="theme-toggle-float" onclick="toggleTheme()" title="Alternar tema">
         <i class="fas fa-moon"></i>
         <span class="theme-label">Modo Escuro</span>
     </button>
     <div class="profile-main">
         <div class="profile-card">
-            <div class="profile-header">
-                <?php if ($profile['logo']): ?>
-                    <img src="../uploads/profiles/<?php echo htmlspecialchars($profile['logo']); ?>" 
-                         alt="<?php echo htmlspecialchars($profile['name']); ?>" class="profile-logo">
-                <?php else: ?>
-                    <div class="profile-logo">
-                        <i class="fas fa-<?php echo $profile['profile_type'] === 'empresa' ? 'building' : 'user'; ?>"></i>
+            <?php if ($layout === 'highlight'): ?>
+                <div class="profile-header">
+                    <div class="profile-header-inner">
+                        <?php if ($profile['logo']): ?>
+                            <img src="../uploads/profiles/<?php echo htmlspecialchars($profile['logo']); ?>" 
+                                 alt="<?php echo htmlspecialchars($profile['name']); ?>" class="profile-logo">
+                        <?php else: ?>
+                            <div class="profile-logo">
+                                <i class="fas fa-<?php echo $profile['profile_type'] === 'empresa' ? 'building' : 'user'; ?>"></i>
+                            </div>
+                        <?php endif; ?>
+                        <div>
+                            <h1 class="profile-name"><?php echo htmlspecialchars($profile['name']); ?></h1>
+                            <?php if ($profile['description']): ?>
+                                <p class="profile-description"><?php echo nl2br(htmlspecialchars($profile['description'])); ?></p>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                <?php endif; ?>
-                <button class="profile-share-btn" onclick="shareProfile('<?php echo SITE_URL . '/profile/' . $profile['slug']; ?>', '<?php echo htmlspecialchars($profile['name']); ?>')" title="Compartilhar perfil">
-                    <i class="fas fa-share-alt"></i>
-                </button>
-                <h1 class="profile-name"><?php echo htmlspecialchars($profile['name']); ?></h1>
-                <?php if ($profile['description']): ?>
-                    <p class="profile-description"><?php echo nl2br(htmlspecialchars($profile['description'])); ?></p>
-                <?php endif; ?>
-            </div>
+                    <button class="profile-share-btn" onclick="shareProfile('<?php echo SITE_URL . '/profile/' . $profile['slug']; ?>', '<?php echo htmlspecialchars($profile['name']); ?>')" title="Compartilhar perfil">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                </div>
+            <?php else: ?>
+                <div class="profile-header">
+                    <?php if ($profile['logo']): ?>
+                        <img src="../uploads/profiles/<?php echo htmlspecialchars($profile['logo']); ?>" 
+                             alt="<?php echo htmlspecialchars($profile['name']); ?>" class="profile-logo">
+                    <?php else: ?>
+                        <div class="profile-logo">
+                            <i class="fas fa-<?php echo $profile['profile_type'] === 'empresa' ? 'building' : 'user'; ?>"></i>
+                        </div>
+                    <?php endif; ?>
+                    <button class="profile-share-btn" onclick="shareProfile('<?php echo SITE_URL . '/profile/' . $profile['slug']; ?>', '<?php echo htmlspecialchars($profile['name']); ?>')" title="Compartilhar perfil">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <h1 class="profile-name"><?php echo htmlspecialchars($profile['name']); ?></h1>
+                    <?php if ($profile['description']): ?>
+                        <p class="profile-description"><?php echo nl2br(htmlspecialchars($profile['description'])); ?></p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="profile-body">
                 <?php if (!empty($profile_fields)): ?>
                     <?php
@@ -156,7 +279,11 @@ $links = getProfileLinks($profile['id']);
                         }
                     }
                     ?>
-                    <div class="profile-info">
+                    <?php if ($layout === 'highlight'): ?>
+                        <div class="profile-actions-row profile-info">
+                    <?php else: ?>
+                        <div class="profile-info">
+                    <?php endif; ?>
                         <?php foreach ($profile_fields as $field): ?>
                             <?php
                             // Campos que não aparecem como item próprio

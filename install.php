@@ -39,6 +39,7 @@ if ($_POST) {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_id INT NOT NULL,
                 profile_type ENUM('empresa', 'profissional') NOT NULL,
+                layout_template VARCHAR(50) NOT NULL DEFAULT 'classic',
                 name VARCHAR(255) NOT NULL,
                 slug VARCHAR(255) UNIQUE NOT NULL,
                 description TEXT,
