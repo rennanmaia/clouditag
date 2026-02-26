@@ -133,6 +133,18 @@ function formatPhone($phone) {
     return $phone;
 }
 
+// Normaliza URLs, adicionando https:// se o usuário não informar protocolo
+function normalizeUrlValue($url) {
+    $url = trim($url);
+    if ($url === '') {
+        return $url;
+    }
+    if (preg_match('#^https?://#i', $url)) {
+        return $url;
+    }
+    return 'https://' . $url;
+}
+
 // Função para validar email
 function isValidEmail($email) {
     return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;

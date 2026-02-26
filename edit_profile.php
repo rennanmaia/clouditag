@@ -35,6 +35,14 @@ if (isset($_POST['action'])) {
         case 'add_field':
             $field_type_id = (int)$_POST['field_type_id'];
             $value = sanitize($_POST['value'] ?? '');
+
+            // Se o tipo for URL, completar protocolo automaticamente
+            $stmt = $db->prepare("SELECT input_type FROM field_types WHERE id = ?");
+            $stmt->execute([$field_type_id]);
+            $ft_row = $stmt->fetch();
+            if ($ft_row && $ft_row['input_type'] === 'url') {
+                $value = normalizeUrlValue($value);
+            }
             
             // Verificar se o campo já existe
             $stmt = $db->prepare("SELECT COUNT(*) FROM profile_fields WHERE profile_id = ? AND field_type_id = ?");
@@ -57,6 +65,17 @@ if (isset($_POST['action'])) {
             $value = sanitize($_POST['value']);
             $is_visible = isset($_POST['is_visible']) ? 1 : 0;
             $is_clickable = isset($_POST['is_clickable']) ? 1 : 0;
+
+            // Descobrir tipo do campo para normalizar URLs
+            $stmt = $db->prepare("SELECT ft.input_type
+                                   FROM profile_fields pf
+                                   JOIN field_types ft ON pf.field_type_id = ft.id
+                                   WHERE pf.id = ? AND pf.profile_id = ?");
+            $stmt->execute([$field_id, $profile_id]);
+            $ft_row = $stmt->fetch();
+            if ($ft_row && $ft_row['input_type'] === 'url') {
+                $value = normalizeUrlValue($value);
+            }
             
             $stmt = $db->prepare("UPDATE profile_fields SET value = ?, is_visible = ?, is_clickable = ? WHERE id = ? AND profile_id = ?");
             if ($stmt->execute([$value, $is_visible, $is_clickable, $field_id, $profile_id])) {
@@ -367,7 +386,7 @@ if ($_POST && !isset($_POST['action'])) {
                                             ];
                                             $hint = $hints[$field['field_name']] ?? '';
                                         ?>
-                                        <div class="field-item" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--gray-300);border-radius:var(--border-radius);background:var(--card-bg);margin-bottom:8px;" data-field-id="<?php echo $field['id']; ?>">
+                                        <div class="field-item" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--gray-300);border-radius:var(--border-radius);background:var(--card-bg);margin-bottom:8px;" data-field-id="<?php echo $field['id']; ?>" data-input-type="<?php echo htmlspecialchars($field['input_type']); ?>">
                                             <span style="width:34px;text-align:center;font-size:1.2em;color:var(--brand-blue);flex-shrink:0;">
                                                 <i class="<?php echo htmlspecialchars($field['icon']); ?>"></i>
                                             </span>
@@ -465,15 +484,24 @@ if ($_POST && !isset($_POST['action'])) {
                 return;
             }
             
-            if (!fieldValueInput.value.trim()) {
+            let value = fieldValueInput.value.trim();
+            if (!value) {
                 showMessage('Digite um valor para o campo!', 'error');
                 return;
+            }
+
+            // Se o tipo for URL, completar protocolo automaticamente
+            const opt = fieldTypeSelect.options[fieldTypeSelect.selectedIndex];
+            const inputType = opt ? (opt.getAttribute('data-type') || '') : '';
+            if (inputType === 'url' && value && !/^https?:\/\//i.test(value)) {
+                value = 'https://' + value;
+                fieldValueInput.value = value;
             }
             
             const formData = new FormData();
             formData.append('action', 'add_field');
             formData.append('field_type_id', fieldTypeSelect.value);
-            formData.append('value', fieldValueInput.value);
+            formData.append('value', value);
             
             fetch('edit_profile.php?id=<?php echo $profile_id; ?>', {
                 method: 'POST',
@@ -503,10 +531,19 @@ if ($_POST && !isset($_POST['action'])) {
             const visibleCheckbox = fieldItem.querySelector('.field-visible');
             const clickableCheckbox = fieldItem.querySelector('.field-clickable');
             
+            let value = valueInput.value;
+
+            // Se o campo for URL, completar protocolo automaticamente
+            const inputType = fieldItem.getAttribute('data-input-type') || '';
+            if (inputType === 'url' && value && !/^https?:\/\//i.test(value)) {
+                value = 'https://' + value.trim();
+                valueInput.value = value;
+            }
+
             const formData = new FormData();
             formData.append('action', 'update_field');
             formData.append('field_id', fieldId);
-            formData.append('value', valueInput.value);
+            formData.append('value', value);
             if (visibleCheckbox.checked) formData.append('is_visible', '1');
             if (clickableCheckbox.checked) formData.append('is_clickable', '1');
             

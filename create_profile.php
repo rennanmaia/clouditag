@@ -56,11 +56,24 @@ if ($_POST) {
                     // Processar campos dinâmicos
                     $posted_type_ids = isset($_POST['field_type_ids']) && is_array($_POST['field_type_ids']) ? $_POST['field_type_ids'] : [];
                     $posted_values   = isset($_POST['field_values'])   && is_array($_POST['field_values'])   ? $_POST['field_values']   : [];
+
+                    // Mapa de tipos para saber quais são URLs
+                    $all_types = getFieldTypes(true);
+                    $types_by_id = [];
+                    foreach ($all_types as $t) {
+                        $types_by_id[$t['id']] = $t;
+                    }
+
                     foreach ($posted_type_ids as $idx => $ftype_id) {
                         $fvalue = isset($posted_values[$idx]) ? sanitize($posted_values[$idx]) : '';
-                        if (!empty($fvalue) && is_numeric($ftype_id)) {
-                            updateProfileField($profile_id, (int)$ftype_id, $fvalue);
+                        if ($fvalue === '' || !is_numeric($ftype_id)) {
+                            continue;
                         }
+                        $ftype_id = (int)$ftype_id;
+                        if (isset($types_by_id[$ftype_id]) && $types_by_id[$ftype_id]['input_type'] === 'url') {
+                            $fvalue = normalizeUrlValue($fvalue);
+                        }
+                        updateProfileField($profile_id, $ftype_id, $fvalue);
                     }
                     
                     $success_message = 'Perfil criado com sucesso!';
@@ -293,7 +306,7 @@ $field_types = getFieldTypes();
         const typeSelect  = document.getElementById('new-field-type');
         const valueInput  = document.getElementById('new-field-value');
         const typeId      = typeSelect.value;
-        const value       = valueInput.value.trim();
+        let   value       = valueInput.value.trim();
 
         if (!typeId) { showCreateMsg('Selecione um tipo de campo.', 'error'); return; }
         if (!value)  { showCreateMsg('Digite o valor do campo.', 'error');    return; }
@@ -311,6 +324,11 @@ $field_types = getFieldTypes();
         const inputType = opt.getAttribute('data-input-type');
         const hint = meta ? getFieldHint(meta.name) : '';
         const idx  = _createFieldIdx++;
+
+        // Se for campo de URL, completar protocolo automaticamente
+        if (inputType === 'url' && value && !/^https?:\/\//i.test(value)) {
+            value = 'https://' + value;
+        }
 
         document.getElementById('fields-empty').style.display = 'none';
 
