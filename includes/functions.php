@@ -266,28 +266,17 @@ function getProfileField($profile_id, $field_name) {
     return $stmt->fetch();
 }
 
-// Função para atualizar ou criar campo do perfil
+// Função para criar um novo campo do perfil (permite múltiplos do mesmo tipo)
 function updateProfileField($profile_id, $field_type_id, $value, $is_visible = 1, $is_clickable = 1) {
     $db = getDB();
-    
-    // Verificar se já existe
-    $stmt = $db->prepare("SELECT id FROM profile_fields WHERE profile_id = ? AND field_type_id = ?");
-    $stmt->execute([$profile_id, $field_type_id]);
-    $existing = $stmt->fetch();
-    
-    if ($existing) {
-        // Atualizar
-        $stmt = $db->prepare("UPDATE profile_fields SET value = ?, is_visible = ?, is_clickable = ? WHERE id = ?");
-        return $stmt->execute([$value, $is_visible, $is_clickable, $existing['id']]);
-    } else {
-        // Criar novo
-        $stmt = $db->prepare("SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM profile_fields WHERE profile_id = ?");
-        $stmt->execute([$profile_id]);
-        $next_order = $stmt->fetchColumn();
-        
-        $stmt = $db->prepare("INSERT INTO profile_fields (profile_id, field_type_id, value, is_visible, is_clickable, order_index, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        return $stmt->execute([$profile_id, $field_type_id, $value, $is_visible, $is_clickable, $next_order, date('Y-m-d H:i:s')]);
-    }
+
+    // Definir próxima posição na ordenação para este perfil
+    $stmt = $db->prepare("SELECT COALESCE(MAX(order_index), 0) + 1 as next_order FROM profile_fields WHERE profile_id = ?");
+    $stmt->execute([$profile_id]);
+    $next_order = $stmt->fetchColumn();
+
+    $stmt = $db->prepare("INSERT INTO profile_fields (profile_id, field_type_id, value, is_visible, is_clickable, order_index, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    return $stmt->execute([$profile_id, $field_type_id, $value, $is_visible, $is_clickable, $next_order, date('Y-m-d H:i:s')]);
 }
 
 // Função para remover campo do perfil

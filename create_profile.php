@@ -311,12 +311,6 @@ $field_types = getFieldTypes();
         if (!typeId) { showCreateMsg('Selecione um tipo de campo.', 'error'); return; }
         if (!value)  { showCreateMsg('Digite o valor do campo.', 'error');    return; }
 
-        // Bloquear duplicatas
-        if (document.querySelector(`[data-create-type-id="${typeId}"]`)) {
-            showCreateMsg('Este tipo de campo já foi adicionado.', 'error');
-            return;
-        }
-
         const opt  = typeSelect.options[typeSelect.selectedIndex];
         const meta = fieldTypesMeta[typeId];
         const icon = opt.getAttribute('data-icon');

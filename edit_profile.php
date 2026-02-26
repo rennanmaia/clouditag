@@ -43,20 +43,12 @@ if (isset($_POST['action'])) {
             if ($ft_row && $ft_row['input_type'] === 'url') {
                 $value = normalizeUrlValue($value);
             }
-            
-            // Verificar se o campo já existe
-            $stmt = $db->prepare("SELECT COUNT(*) FROM profile_fields WHERE profile_id = ? AND field_type_id = ?");
-            $stmt->execute([$profile_id, $field_type_id]);
-            
-            if ($stmt->fetchColumn() == 0) {
-                $stmt = $db->prepare("INSERT INTO profile_fields (profile_id, field_type_id, value, created_at) VALUES (?, ?, ?, NOW())");
-                if ($stmt->execute([$profile_id, $field_type_id, $value])) {
-                    echo json_encode(['success' => true, 'message' => 'Campo adicionado com sucesso!']);
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'Erro ao adicionar campo.']);
-                }
+
+            // Criar sempre um novo campo, permitindo múltiplos do mesmo tipo
+            if (updateProfileField($profile_id, $field_type_id, $value)) {
+                echo json_encode(['success' => true, 'message' => 'Campo adicionado com sucesso!']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Este campo já existe no perfil.']);
+                echo json_encode(['success' => false, 'message' => 'Erro ao adicionar campo.']);
             }
             exit;
             
@@ -330,24 +322,13 @@ if ($_POST && !isset($_POST['action'])) {
                                         <select id="new-field-type" class="form-control">
                                             <option value="">Selecione um tipo de campo</option>
                                             <?php foreach ($field_types as $field_type): ?>
-                                                <?php 
-                                                $field_exists = false;
-                                                foreach ($profile_fields as $existing_field) {
-                                                    if ($existing_field['field_type_id'] == $field_type['id']) {
-                                                        $field_exists = true;
-                                                        break;
-                                                    }
-                                                }
-                                                ?>
-                                                <?php if (!$field_exists): ?>
-                                                    <option value="<?php echo $field_type['id']; ?>" 
-                                                            data-icon="<?php echo $field_type['icon']; ?>"
-                                                            data-type="<?php echo $field_type['input_type']; ?>"
-                                                            data-name="<?php echo htmlspecialchars($field_type['name']); ?>"
-                                                            data-placeholder="<?php echo htmlspecialchars($field_type['placeholder']); ?>">
-                                                        <?php echo htmlspecialchars($field_type['label']); ?>
-                                                    </option>
-                                                <?php endif; ?>
+                                                <option value="<?php echo $field_type['id']; ?>" 
+                                                        data-icon="<?php echo $field_type['icon']; ?>"
+                                                        data-type="<?php echo $field_type['input_type']; ?>"
+                                                        data-name="<?php echo htmlspecialchars($field_type['name']); ?>"
+                                                        data-placeholder="<?php echo htmlspecialchars($field_type['placeholder']); ?>">
+                                                    <?php echo htmlspecialchars($field_type['label']); ?>
+                                                </option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
