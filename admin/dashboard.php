@@ -106,6 +106,7 @@ $recent_profiles = $stmt->fetchAll();
             <li><a href="dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
             <li><a href="users.php"><i class="fas fa-users"></i> Usuários</a></li>
             <li><a href="profiles.php"><i class="fas fa-list"></i> Perfis</a></li>
+            <li><a href="field_types.php"><i class="fas fa-sliders-h"></i> Tipos de Campo</a></li>
             <li><a href="#" onclick="showModal('createAdminModal')"><i class="fas fa-user-plus"></i> Criar Admin</a></li>
             <li><a href="../dashboard.php"><i class="fas fa-user"></i> Área do Usuário</a></li>
             <li><a href="?logout=1"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
