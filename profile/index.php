@@ -1,8 +1,9 @@
 <?php
 require_once '../includes/functions.php';
 
-// Garante que a coluna de layout exista (para bases antigas)
+// Garante que colunas necessárias existam (para bases antigas)
 ensureProfileLayoutColumn();
+ensureProfileThemeAndColorsColumns();
 
 // Obter slug da URL
 $slug = isset($_GET['slug']) ? sanitize($_GET['slug']) : '';
@@ -32,6 +33,17 @@ $layout = isset($profile['layout_template']) ? $profile['layout_template'] : 'cl
 if (!isset($layout_options[$layout])) {
     $layout = 'classic';
 }
+
+// Cores de degradê e tema padrão por perfil
+$gradient_start = $profile['gradient_start'] ?? '#0099e5';
+$gradient_end   = $profile['gradient_end']   ?? '#00c9f5';
+if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $gradient_start)) {
+    $gradient_start = '#0099e5';
+}
+if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $gradient_end)) {
+    $gradient_end = '#00c9f5';
+}
+$profile_theme = (isset($profile['theme_mode']) && $profile['theme_mode'] === 'dark') ? 'dark' : 'light';
 
 // Helper para renderizar um item de informação do perfil
 // $variant: 'card' (default, usado nos 4 primeiros do highlight e nos outros layouts)
@@ -145,7 +157,7 @@ function renderProfileFieldItemPublic(array $field, string $wifi_password_value 
     <meta name="twitter:description" content="<?php echo htmlspecialchars($profile['description']); ?>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
-    <script>(function(){var t=localStorage.getItem('clouditag_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
+    <script>(function(){var d='<?php echo $profile_theme; ?>';var t=localStorage.getItem('clouditag_theme')||d;document.documentElement.setAttribute('data-theme',t);})();</script>
     <style>
         /* Base da página de perfil */
         body.profile-page {
@@ -164,6 +176,9 @@ function renderProfileFieldItemPublic(array $field, string $wifi_password_value 
             border-radius: 0;
             min-height: 100vh;
             box-shadow: var(--shadow-lg);
+        }
+        .profile-header {
+            background: linear-gradient(135deg, <?php echo htmlspecialchars($gradient_start); ?> 0%, <?php echo htmlspecialchars($gradient_end); ?> 100%);
         }
         .profile-share-btn {
             position: absolute;

@@ -17,6 +17,9 @@ if ($_POST) {
     $slug            = sanitize($_POST['slug']);
     $description     = sanitize($_POST['description']);
     $layout_template = isset($_POST['layout_template']) ? sanitize($_POST['layout_template']) : 'classic';
+    $gradient_start  = isset($_POST['gradient_start']) ? sanitize($_POST['gradient_start']) : '#0099e5';
+    $gradient_end    = isset($_POST['gradient_end'])   ? sanitize($_POST['gradient_end'])   : '#00c9f5';
+    $theme_mode      = isset($_POST['theme_mode'])     ? sanitize($_POST['theme_mode'])     : 'light';
     
     // Validações básicas
     if (empty($profile_type) || empty($name) || empty($slug)) {
@@ -26,11 +29,25 @@ if ($_POST) {
     } else {
         $db = getDB();
         
-        // Garantir coluna de layout em perfis
+        // Garantir colunas necessárias em perfis
         ensureProfileLayoutColumn();
+        ensureProfileThemeAndColorsColumns();
         $layout_keys = array_keys(getProfileLayoutOptions());
         if (!in_array($layout_template, $layout_keys)) {
             $layout_template = 'classic';
+        }
+
+        // Validar cores de degradê (formato #RRGGBB simples)
+        if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $gradient_start)) {
+            $gradient_start = '#0099e5';
+        }
+        if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $gradient_end)) {
+            $gradient_end = '#00c9f5';
+        }
+
+        // Validar tema
+        if (!in_array($theme_mode, ['light','dark'])) {
+            $theme_mode = 'light';
         }
         
         // Verificar se slug já existe
@@ -52,13 +69,25 @@ if ($_POST) {
             }
             
             if (!$error_message) {
-                // Inserir perfil básico já com layout_template
+                // Inserir perfil básico já com layout, cores e tema
                 $stmt = $db->prepare("
-                    INSERT INTO profiles (user_id, profile_type, layout_template, name, slug, description, logo, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO profiles (user_id, profile_type, layout_template, gradient_start, gradient_end, theme_mode, name, slug, description, logo, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 
-                if ($stmt->execute([$user['id'], $profile_type, $layout_template, $name, $slug, $description, $logo_filename, date('Y-m-d H:i:s')])) {
+                if ($stmt->execute([
+                    $user['id'],
+                    $profile_type,
+                    $layout_template,
+                    $gradient_start,
+                    $gradient_end,
+                    $theme_mode,
+                    $name,
+                    $slug,
+                    $description,
+                    $logo_filename,
+                    date('Y-m-d H:i:s')
+                ])) {
                     $profile_id = $db->lastInsertId();
                     
                     // Processar campos dinâmicos
@@ -220,6 +249,45 @@ $field_types = getFieldTypes();
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <div class="form-group">
+                                                <label for="gradient_start">Cor inicial do degradê</label>
+                                                <?php
+                                                $grad_start_val = isset($_POST['gradient_start']) ? $_POST['gradient_start'] : '#0099e5';
+                                                ?>
+                                                <input type="color" name="gradient_start" id="gradient_start" class="form-control" value="<?php echo htmlspecialchars($grad_start_val); ?>">
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-group">
+                                                <label for="gradient_end">Cor final do degradê</label>
+                                                <?php
+                                                $grad_end_val = isset($_POST['gradient_end']) ? $_POST['gradient_end'] : '#00c9f5';
+                                                ?>
+                                                <input type="color" name="gradient_end" id="gradient_end" class="form-control" value="<?php echo htmlspecialchars($grad_end_val); ?>">
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-group">
+                                                <label>Tema padrão do cartão</label>
+                                                <?php
+                                                $theme_val = isset($_POST['theme_mode']) ? $_POST['theme_mode'] : 'light';
+                                                if (!in_array($theme_val, ['light','dark'])) {
+                                                    $theme_val = 'light';
+                                                }
+                                                ?>
+                                                <div style="display:flex;gap:8px;align-items:center;">
+                                                    <label style="font-weight:500;font-size:.85rem;">
+                                                        <input type="radio" name="theme_mode" value="light" <?php echo $theme_val === 'light' ? 'checked' : ''; ?>> Claro
+                                                    </label>
+                                                    <label style="font-weight:500;font-size:.85rem;">
+                                                        <input type="radio" name="theme_mode" value="dark" <?php echo $theme_val === 'dark' ? 'checked' : ''; ?>> Escuro
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 
                                 <!-- ===== CAMPOS DINÂMICOS ===== -->
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 8px;">

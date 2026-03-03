@@ -57,6 +57,34 @@ function ensureProfileLayoutColumn() {
     }
 }
 
+// Garante que a tabela de perfis tenha colunas de cores de degradê e tema padrão
+function ensureProfileThemeAndColorsColumns() {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $db = getDB();
+
+        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'gradient_start'");
+        if (!$stmt->fetch()) {
+            $db->exec("ALTER TABLE profiles ADD COLUMN gradient_start VARCHAR(7) DEFAULT '#0099e5' AFTER layout_template");
+        }
+
+        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'gradient_end'");
+        if (!$stmt->fetch()) {
+            $db->exec("ALTER TABLE profiles ADD COLUMN gradient_end VARCHAR(7) DEFAULT '#00c9f5' AFTER gradient_start");
+        }
+
+        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'theme_mode'");
+        if (!$stmt->fetch()) {
+            $db->exec("ALTER TABLE profiles ADD COLUMN theme_mode ENUM('light','dark') NOT NULL DEFAULT 'light' AFTER gradient_end");
+        }
+    } catch (Exception $e) {
+        // Falha silenciosa: se não conseguir alterar a tabela, usa-se padrão em memória
+    }
+}
+
 // Função para verificar se usuário está logado
 function isLoggedIn() {
     return isset($_SESSION['user_id']);

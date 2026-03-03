@@ -4,6 +4,8 @@ require_once 'includes/functions.php';
 
 // Garantir coluna de layout em perfis
 ensureProfileLayoutColumn();
+// Garantir colunas de cores de degradê e tema em perfis
+ensureProfileThemeAndColorsColumns();
 
 // Verificar se está logado
 if (!isLoggedIn()) {
@@ -61,17 +63,16 @@ if (isset($_POST['action'])) {
             $value = sanitize($_POST['value']);
             $is_visible = isset($_POST['is_visible']) ? 1 : 0;
             $is_clickable = isset($_POST['is_clickable']) ? 1 : 0;
-
-            // Descobrir tipo do campo para normalizar URLs
-            $stmt = $db->prepare("SELECT ft.input_type
-                                   FROM profile_fields pf
-                                   JOIN field_types ft ON pf.field_type_id = ft.id
-                                   WHERE pf.id = ? AND pf.profile_id = ?");
-            $stmt->execute([$field_id, $profile_id]);
-            $ft_row = $stmt->fetch();
-            if ($ft_row && $ft_row['input_type'] === 'url') {
-                $value = normalizeUrlValue($value);
-            }
+                        // Descobrir tipo do campo para normalizar URLs
+                        $stmt = $db->prepare("SELECT ft.input_type
+                                               FROM profile_fields pf
+                                               JOIN field_types ft ON pf.field_type_id = ft.id
+                                               WHERE pf.id = ? AND pf.profile_id = ?");
+                        $stmt->execute([$field_id, $profile_id]);
+                        $ft_row = $stmt->fetch();
+                        if ($ft_row && $ft_row['input_type'] === 'url') {
+                            $value = normalizeUrlValue($value);
+                        }
             
             $stmt = $db->prepare("UPDATE profile_fields SET value = ?, is_visible = ?, is_clickable = ? WHERE id = ? AND profile_id = ?");
             if ($stmt->execute([$value, $is_visible, $is_clickable, $field_id, $profile_id])) {
@@ -156,6 +157,9 @@ if ($_POST && !isset($_POST['action'])) {
     $slug            = sanitize($_POST['slug']);
     $description     = sanitize($_POST['description']);
     $layout_template = isset($_POST['layout_template']) ? sanitize($_POST['layout_template']) : ($profile['layout_template'] ?? 'classic');
+    $gradient_start  = isset($_POST['gradient_start']) ? sanitize($_POST['gradient_start']) : ($profile['gradient_start'] ?? '#0099e5');
+    $gradient_end    = isset($_POST['gradient_end'])   ? sanitize($_POST['gradient_end'])   : ($profile['gradient_end']   ?? '#00c9f5');
+    $theme_mode      = isset($_POST['theme_mode'])     ? sanitize($_POST['theme_mode'])     : ($profile['theme_mode']     ?? 'light');
     
     // Validações
     if (empty($profile_type) || empty($name) || empty($slug)) {
@@ -167,6 +171,22 @@ if ($_POST && !isset($_POST['action'])) {
         $layout_options = array_keys(getProfileLayoutOptions());
         if (!in_array($layout_template, $layout_options)) {
             $layout_template = 'classic';
+        }
+
+        // Validar cores de degradê (formato #RRGGBB simples)
+        $current_grad_start = isset($profile['gradient_start']) && preg_match('/^#[0-9A-Fa-f]{6}$/', $profile['gradient_start']) ? $profile['gradient_start'] : '#0099e5';
+        $current_grad_end   = isset($profile['gradient_end'])   && preg_match('/^#[0-9A-Fa-f]{6}$/', $profile['gradient_end'])   ? $profile['gradient_end']   : '#00c9f5';
+
+        if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $gradient_start)) {
+            $gradient_start = $current_grad_start;
+        }
+        if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $gradient_end)) {
+            $gradient_end = $current_grad_end;
+        }
+
+        // Validar tema
+        if (!in_array($theme_mode, ['light','dark'])) {
+            $theme_mode = isset($profile['theme_mode']) && in_array($profile['theme_mode'], ['light','dark']) ? $profile['theme_mode'] : 'light';
         }
 
         // Verificar se slug já existe (exceto o próprio perfil)
@@ -193,15 +213,13 @@ if ($_POST && !isset($_POST['action'])) {
             }
             
             if (!$error_message) {
-                // Atualizar perfil básico, incluindo layout_template
-                $stmt = $db->prepare("
-                    UPDATE profiles SET 
-                        profile_type = ?, name = ?, slug = ?, description = ?, logo = ?, layout_template = ?
-                    WHERE id = ?
-                ");
+                // Atualizar perfil básico, incluindo layout, cores e tema
+                $stmt = $db->prepare("UPDATE profiles SET 
+                        profile_type = ?, name = ?, slug = ?, description = ?, logo = ?, layout_template = ?, gradient_start = ?, gradient_end = ?, theme_mode = ?
+                    WHERE id = ?");
                 
                 if ($stmt->execute([
-                    $profile_type, $name, $slug, $description, $logo_filename, $layout_template, $profile_id
+                    $profile_type, $name, $slug, $description, $logo_filename, $layout_template, $gradient_start, $gradient_end, $theme_mode, $profile_id
                 ])) {
                     $success_message = 'Perfil atualizado com sucesso!';
                     
@@ -212,6 +230,9 @@ if ($_POST && !isset($_POST['action'])) {
                     $profile['description'] = $description;
                     $profile['logo'] = $logo_filename;
                     $profile['layout_template'] = $layout_template;
+                    $profile['gradient_start'] = $gradient_start;
+                    $profile['gradient_end'] = $gradient_end;
+                    $profile['theme_mode'] = $theme_mode;
                     
                     // Recarregar campos dinâmicos
                     $profile_fields = getAllProfileFields($profile_id);
@@ -228,7 +249,6 @@ if ($_POST && !isset($_POST['action'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Perfil - <?php echo htmlspecialchars($profile['name']); ?> - CloudiTag</title>
     <script>(function(){var t=localStorage.getItem('clouditag_theme')||'light';document.documentElement.setAttribute('data-theme',t);})();</script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
@@ -385,6 +405,51 @@ if ($_POST && !isset($_POST['action'])) {
                                                 </label>
                                             </div>
                                         <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-4">
+                                        <div class="form-group">
+                                            <label for="gradient_start">Cor inicial do degradê</label>
+                                            <?php
+                                            $grad_start_val = isset($_POST['gradient_start'])
+                                                ? $_POST['gradient_start']
+                                                : (isset($profile['gradient_start']) ? $profile['gradient_start'] : '#0099e5');
+                                            ?>
+                                            <input type="color" name="gradient_start" id="gradient_start" class="form-control" value="<?php echo htmlspecialchars($grad_start_val); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="form-group">
+                                            <label for="gradient_end">Cor final do degradê</label>
+                                            <?php
+                                            $grad_end_val = isset($_POST['gradient_end'])
+                                                ? $_POST['gradient_end']
+                                                : (isset($profile['gradient_end']) ? $profile['gradient_end'] : '#00c9f5');
+                                            ?>
+                                            <input type="color" name="gradient_end" id="gradient_end" class="form-control" value="<?php echo htmlspecialchars($grad_end_val); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="form-group">
+                                            <label>Tema padrão do cartão</label>
+                                            <?php
+                                            $theme_val = isset($_POST['theme_mode'])
+                                                ? $_POST['theme_mode']
+                                                : (isset($profile['theme_mode']) ? $profile['theme_mode'] : 'light');
+                                            if (!in_array($theme_val, ['light','dark'])) {
+                                                $theme_val = 'light';
+                                            }
+                                            ?>
+                                            <div style="display:flex;gap:8px;align-items:center;">
+                                                <label style="font-weight:500;font-size:.85rem;">
+                                                    <input type="radio" name="theme_mode" value="light" <?php echo $theme_val === 'light' ? 'checked' : ''; ?>> Claro
+                                                </label>
+                                                <label style="font-weight:500;font-size:.85rem;">
+                                                    <input type="radio" name="theme_mode" value="dark" <?php echo $theme_val === 'dark' ? 'checked' : ''; ?>> Escuro
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 
